@@ -1,89 +1,130 @@
 # Room Comfort
 
-**Room heating and cooling, pet-friendly Away targets, and comfort when you return.**
+[![Validation](https://github.com/qmciaq/ha-room-comfort/actions/workflows/validate.yml/badge.svg)](https://github.com/qmciaq/ha-room-comfort/actions/workflows/validate.yml)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistant&logoColor=white)](https://my.home-assistant.io/redirect/hacs_repository/?owner=qmciaq&repository=ha-room-comfort&category=integration)
+![Home Assistant 2026.10+](https://img.shields.io/badge/Home_Assistant-2026.10%2B-18BCF2?logo=homeassistant&logoColor=white)
+![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-blue)
 
-A Home Assistant custom integration that coordinates radiator thermostats and an
-optional reversible air conditioner using an independent room temperature sensor.
-Includes a responsive room card, an all-rooms overview, and a sidebar page.
+**One temperature control for a whole room: radiators, reversible AC, and an independent room sensor.**
 
-![Desktop overview — simulated devices](docs/images/desktop.png)
+Use radiators for ordinary heating, request a timed AC heat boost, or switch the
+room to cooling. Keep comfortable Away targets for a pet, prepare rooms before
+returning, and pause control when outdoor conditions, an open window or an empty
+room make it unnecessary.
 
-## Daily controls
+[Install](#installation) · [Quick start](#quick-start) · [Dashboard cards](#dashboard-cards) · [Outdoor limits](#outdoor-temperature-limits) · [Windows & presence](#doors-windows-and-room-presence) · [Blueprints](docs/automations.md) · [Troubleshooting](#troubleshooting)
 
-| Control | Behaviour |
-|---|---|
-| Target temperature | Adjust with buttons or the slider |
-| Heat → Radiators | PID makes bounded adjustments to native TRV targets using the room sensor |
-| Home / Away / Vacation targets | Separate Heat and Cool temperatures per room, also exposed as HA number entities |
-| For my return | Choose Heat or Cool per room for Coming home |
-| Automatic away | Applies Away only after every selected tracker is confirmed outside the home zone |
-| Vacation switch | Manual override, retained until explicitly ended or Coming home is started |
-| Coming home switch | Uses Home targets, holds them ready until arrival, cancellation or timeout |
-| Heat boost | AC assists until the target is reached or the timer expires, then radiators maintain the temperature |
-| Cool | AC cools; all radiators must report Off before cooling starts |
-| Off | Requests all assigned devices Off |
-| Control devices | Enables live commands; starts **off** on a fresh installation |
+![Room Comfort overview — simulated rooms](docs/images/desktop.png)
 
-Each room card shows current/target temperature, heating source, boost countdown,
-controller status, device details and room-sensor history through HA's more-info
-dialog. Faults and command failures are visible. Observe-only mode shows planned
-demand without operating devices.
+## What you get
 
-The overview discovers all Room Comfort rooms and offers search plus All /
-Heating / Cooling / Needs attention filters. Cards follow the HA theme and
-support English and Polish. All frontend files are bundled with the integration.
+| Feature | Behaviour |
+| --- | --- |
+| Room thermostat | One target and explicit Heat / Cool / Off for all assigned devices |
+| Smooth radiator heating | PID with deadband, anti-windup and bounded native TRV setpoint adjustments |
+| AC heat boost | An explicit assist that ends at the target or the selected timeout |
+| Cooling | AC cools only after all radiators confirm Off; minimum AC off time is enforced |
+| Home / Away / Vacation | Separate heating and cooling targets for every room |
+| Household presence | Away starts only when every chosen person/tracker is confirmed outside the selected HA zone |
+| Coming home | A manual switch prepares enabled rooms in each room's selected Heat or Cool mode |
+| Outdoor limits | Global defaults, per-room overrides, or no outdoor restriction for a particular room |
+| Door/window contacts | Pause after continuous opening for a configurable number of seconds |
+| Room presence | Independent heating and cooling absence timers, with automatic resumption |
+| Bundled UI | Full controls, compact controls, status tiles and an all-room sidebar; English/Polish and light/dark themes |
+| Automation support | Native climate/number/select/switch/button entities and four reusable blueprints |
 
-[Mobile preview](docs/images/mobile.png) · [Dark theme](docs/images/dark.png)
+This is a custom integration in active development. Local and isolated HA tests
+cover the controller and UI; real TRV/AC response and PID tuning still need checking
+on your own hardware. **Heat demand is calculated demand, not measured valve opening.**
+
+## Requirements
+
+- Home Assistant **2026.10.0 or newer**.
+- A separate room temperature `sensor` in °C or °F.
+- At least one physical radiator `climate` entity supporting Heat, Off and a single target temperature.
+- Optional reversible AC `climate` supporting Heat, Cool, Off and a target temperature.
+- Optional outdoor temperature sensor, door/window contacts, room presence sensors, and people/device trackers.
+
+The integration and all cards are installed together. There is no Node build,
+separate card dependency, runtime cloud service, or extra account required.
 
 ## Installation
 
-Requires Home Assistant **2026.10 or newer**. No Node build, separate card download,
-external runtime service, or cloud account is needed on the HA host.
+### HACS custom repository
 
-### Private repository
+The repository is public and can be added as a **custom Integration repository**.
+It is not currently listed in HACS's default catalog.
 
-HACS **does not support private GitHub repositories**, including custom repos.
-While this repo is private:
+Repository publication is still being completed: the owner must add a GitHub
+About description/topics and choose a license before HACS validation can fully
+pass. See the [publication checklist](docs/publishing.md). Manual installation
+remains available below.
 
-1. Download the source or install ZIP.
-2. Copy `custom_components/room_comfort` into the HA configuration directory.
-   On HA OS, the result should be
-   `/config/custom_components/room_comfort/manifest.json`.
-   Keep a copy of any existing version before replacing it.
-3. Restart Home Assistant.
-4. Open **Settings → Devices & services → Add integration → Room Comfort**.
-5. Select a room name, temperature sensor, radiator thermostats, optional AC,
-   and optional window contacts. Repeat for each room.
-6. Open **Room Comfort** in the sidebar. The room cards appear automatically.
-7. Leave Control devices off while reviewing readings and planned demand.
-   When ready for a live trial, select Heat and enable Control devices.
+[![Open Room Comfort in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=qmciaq&repository=ha-room-comfort&category=integration)
 
-An authenticated Git checkout can also supply the files. This integration does
-not create credentials or store GitHub tokens.
+1. Install [HACS](https://www.hacs.xyz/docs/use/) if needed.
+2. In HACS, open **⋮ → Custom repositories**.
+3. Add `https://github.com/qmciaq/ha-room-comfort` with type **Integration**.
+4. Download **Room Comfort**, then restart Home Assistant.
+5. Open **Settings → Devices & services → Add integration → Room Comfort**.
 
-### HACS, if the repository becomes public later
+Until GitHub releases are published, HACS uses the default branch; the displayed
+remote version can be a commit hash. Integration code, sidebar and card updates
+are delivered together. Restart HA and refresh the browser after updating.
 
-The source has the HACS integration layout, manifest, local brand assets,
-bundled frontend and validation workflows. A single HACS integration install
-includes the cards and sidebar UI.
+### Manual installation
 
-1. Open **HACS → ⋮ → Custom repositories**.
-2. Add `https://github.com/qmciaq/ha-room-comfort` with type **Integration**.
-3. Download Room Comfort, restart HA, and add rooms as above.
+1. [Download the repository ZIP](https://github.com/qmciaq/ha-room-comfort/archive/refs/heads/main.zip) and extract it.
+2. Copy `custom_components/room_comfort/` into your HA configuration directory's `custom_components/` folder.
+3. Restart Home Assistant, then add **Room Comfort** through Devices & services.
+4. For automation templates, import the blueprints separately; see [the guide](docs/automations.md).
 
-No workflow changes repository visibility. HACS compatibility describes the
-packaging until the public HACS validation job has actually passed.
+Do not put the entire repository inside `custom_components`. The final integration
+path should be `/config/custom_components/room_comfort/manifest.json`.
 
-Official HACS docs: [private repositories](https://hacs.xyz/docs/faq/private_repositories/)
-and [integration requirements](https://hacs.xyz/docs/publish/integration/).
+## Quick start
 
-## Use the cards on another dashboard
+1. Create a room, select its independent temperature sensor and radiator entities, and optionally assign AC.
+2. Open **Room Comfort** in the sidebar. New rooms start in **Observe only**, which sends no commands.
+3. Set the room's Home/Away/Vacation temperatures and choose Heat or Cool.
+4. Review the planned demand and device states, then enable **Control devices** when ready.
+5. Open the automatically created **Home modes** configuration entry to set household trackers, outdoor defaults and the Coming home timeout.
 
-Refresh the browser after installation or an update. Under **Edit dashboard →
-Add card**, search for **Room Comfort**. The visual editor selects a room,
-display name, and whether to show device/sensor details.
+Add the integration again for each additional room. Physical actuators cannot
+belong to two Room Comfort rooms. Disable conflicting device schedules or other
+controllers before giving a room live control.
 
-For the YAML card editor, replace `climate.salon` with the actual room thermostat:
+## Dashboard cards
+
+Use **Edit dashboard → Add card**, then search for **Room Comfort**. Every card has
+a graphical editor; you can also paste the examples below. Cards use the same
+room thermostat entities and services as the sidebar.
+
+| Card | Use it for |
+| --- | --- |
+| `custom:room-comfort-card` | Full room controls, profile temperatures, device details and conditions |
+| `custom:room-comfort-mini-card` | Compact controls with current/target temperatures, ± buttons, modes and live-control switch |
+| `custom:room-comfort-status-card` | A small status row with current → target temperature; tap for HA details |
+| `custom:room-comfort-overview` | All configured rooms, search, filters and shared household controls |
+
+![Compact controls and status tiles — simulated rooms](docs/images/widgets.png)
+
+Two compact widgets next to each other:
+
+```yaml
+type: grid
+columns: 2
+square: false
+cards:
+  - type: custom:room-comfort-mini-card
+    entity: climate.salon
+  - type: custom:room-comfort-mini-card
+    entity: climate.bedroom
+```
+
+Use `custom:room-comfort-status-card` for shorter status rows, or place full and
+compact cards in a Sections dashboard. In the visual card editor, **Card layout**
+also lets you switch between full, compact and status views.
 
 ```yaml
 type: custom:room-comfort-card
@@ -92,129 +133,123 @@ show_devices: true
 show_sensor: true
 ```
 
-The full overview can also be used as a single card:
-
-```yaml
-type: custom:room-comfort-overview
-title: Room Comfort
-```
-
-The overview optionally accepts an `entities` list to limit rooms, along with
-`show_devices`, `show_sensor`, and `language: en|pl`.
-
-The frontend loads automatically when a room is set up. For unusual HA frontend
-setups where automatic loading is disabled, register this URL as a **JavaScript
-module** under **Settings → Dashboards → Resources**:
+Replace the example IDs with your **Room Comfort thermostats**, not individual
+TRVs or AC units. The frontend is registered automatically. If your dashboard
+needs an explicit resource, add this URL as a **JavaScript module**:
 
 ```text
-/room_comfort_frontend/room-comfort.js?v=0.4.0
+/room_comfort_frontend/room-comfort.js?v=0.5.0
 ```
 
-The integration uses HA's supported static-path and custom-panel APIs. It does
-not edit `.storage` files or replace existing dashboards.
+[Mobile overview](docs/images/mobile.png) · [Dark theme](docs/images/dark.png)
+
+## Outdoor temperature limits
+
+Configure global defaults under **Room Comfort → Home modes → Configure**.
+Select a numeric outdoor temperature sensor and enable outdoor limits. Each room's
+configuration offers `inherit`, `custom`, or `disabled`:
+
+- **inherit:** use the global sensor, thresholds, hysteresis and freshness limit.
+- **custom:** use this room's thresholds; optionally select another outdoor sensor, otherwise use the global sensor.
+- **disabled:** this room ignores outdoor temperature restrictions.
+
+Example: **Heat below 16°C, Cool above 24°C, hysteresis 0.5°C**.
+Heating becomes eligible below 16°C and remains eligible until outdoor temperature
+reaches 16.5°C. Cooling becomes eligible above 24°C and remains eligible until it
+falls to 23.5°C. The room thermostat still decides demand from the room sensor and
+the active target. Setting hysteresis to zero gives strict thresholds.
+
+At 18°C outside, a room requesting 21°C stays in Heat mode with its target intact,
+but heating is paused. Limits apply to radiator PID, AC boost and Coming home.
+They do not select Heat/Cool automatically. Missing, invalid or stale outdoor data
+pauses temperature control while an outdoor policy is enabled. Outdoor limits
+start disabled until you configure a sensor and enable them.
+
+## Doors, windows and room presence
+
+Select **Door/window contacts** in the room configuration. Contacts must report
+`on` when open and `off` when closed. If a contact stays open for the configured
+**open delay** (default 10 seconds), the room requests radiator heating and AC Off.
+A shorter opening does not pause control. Closing resumes ordinary control,
+subject to AC cooldown. Unknown/unavailable contacts pause immediately because a
+closed window cannot be confirmed. Set zero seconds for immediate pause.
+
+Select one or more binary **Room presence/motion sensors**. Any `on` means occupied;
+every selected sensor must be `off` before absence timers run. Configure separately:
+
+- Pause heating when empty, after **30 minutes** by default.
+- Pause AC cooling when empty, after **10 minutes** by default.
+
+Either pause can be disabled. Presence resuming allows normal control immediately;
+AC still respects its minimum off time. Unknown presence keeps comfort and resets
+the absence timer. No selected presence sensors means no room-occupancy restriction.
+Timers restart on HA restart or room settings reload.
+
+**Coming home deliberately bypasses empty-room pauses** so it can prepare an empty
+house. It still obeys windows, outdoor limits and device interlocks. For a pet,
+choose presence sensors that detect the pet reliably, or leave empty-room heating
+pause off; household Away temperature and room occupancy are separate controls.
 
 ## Home, Away, Vacation and Coming home
 
-The integration creates one shared **Home modes** entry automatically. Open
-**Settings → Devices & services → Room Comfort → Home modes → Configure** and select
-people/device trackers plus a home zone (default `zone.home`). Every selected
-tracker must be known outside the zone for the confirmation delay (default five
-minutes). One person inside, unknown/unavailable data, an empty tracker selection,
-or uncertain GPS at the boundary prevents automatic Away. These are geographic
-HA zones, not room/device areas.
+Each room has separate temperature banks:
 
-Each room has editable **Home**, **Away**, and **Vacation** temperature fields on
-its card, with ordinary HA number entities for automations. Defaults are 21°C,
-19°C and 17°C for heating, and 24°C, 27°C and 29°C for cooling. They are configurable comfort presets, not animal-care guidance.
-Keep Away warm enough for the dog instead of shutting every radiator down.
-Heating and cooling keep separate targets. Switching modes selects the matching
-profile target without overwriting the other mode. Cool stays visible but disabled
-with setup guidance if the room has no assigned AC. An unavailable AC also blocks cooling.
+| Profile | Default Heat target | Default Cool target |
+| --- | ---: | ---: |
+| Home | 21°C | 24°C |
+| Away | 19°C | 27°C |
+| Vacation | 17°C | 29°C |
 
-- **Vacation** is a manual HA switch. It never activates merely because everyone
-  left and does not auto-clear when a tracker returns.
-- **Coming home** is another HA switch. Starting it clears Vacation and applies
-  Home targets. Rooms with live control enabled use their **For my return** Heat/Cool selection; disabled rooms
-  remain in observe-only mode. AC heat boost is still a separate explicit action.
-- When temperatures are reached, Coming home says **Ready** and holds them. It
-  ends on a confirmed arrival, cancellation, or the configurable timeout
-  (default four hours). An already-present tracker does not count as a new arrival.
-- Vacation, Automatic away, and a running prewarm deadline survive restarts.
-- Turning Automatic away off selects Home unless Vacation or Coming home is on.
+These are editable presets. The thermostat's main target edits the active profile
+in the current Heat/Cool bank. All profile number entities use °C.
 
-The overview includes the switches, individual tracker membership, and prewarm
-status/countdown. Mode priority is Coming home → Vacation → confirmed Away → Home.
+- **Automatic away:** every selected `person`/`device_tracker` must be confirmed outside the chosen HA geographical zone for the confirmation delay (default 5 minutes). Unknown trackers keep Home comfort. HA zones are not indoor room areas.
+- **Vacation:** an explicit manual switch; it does not start from absence or clear from an arrival.
+- **Coming home:** a manual switch that clears Vacation and uses each enabled room's **For my return** Heat/Cool selection and Home target. Disabled rooms remain observe-only; AC heat boost remains a separate request.
+- **Ready:** enabled rooms have reached the relevant side of their Home target, within 0.2°C, with no blocking sensor/window fault. Coming home holds until a new confirmed arrival, cancellation, or timeout (default 4 hours).
+
+Priority is **Coming home → Vacation → confirmed Away → Home**. Manual household
+states and an active return deadline survive restart. Ordinary profile changes do
+not switch an Off room on.
 
 ## Automation blueprints
 
-Four supplied blueprints cover scheduled Home temperatures, a manual return-home
-button, ready notifications, and room Heat/Cool/Off mode triggers. Each has a
-configuration form in HA. They use Room Comfort entities and preserve live-control
-opt-in. See [installation, examples and entity actions](docs/automations.md). The
-manual install ZIP includes the blueprint directory; HACS does not install it.
+Four templates provide forms for scheduled Home temperatures, a manual return
+button, ready notifications, and Heat/Cool/Off triggers. Public GitHub URLs now
+support HA's blueprint importer. HACS integration downloads do not install
+blueprints automatically.
 
-## Room settings
+[Import and configure blueprints →](docs/automations.md)
 
-Use **Settings → Devices & services → Room Comfort → Configure** on a room.
-You can change its sensor, radiators, AC, windows, temperature tolerance,
-boost duration, AC minimum off interval, sensor freshness, PID gains, deadband,
-and minimum target-update interval. Updating
-settings reloads that room.
+For custom automations, use room climate entities, profile number entities,
+per-room return-mode selects and shared household switches. Commands sent directly
+to managed physical devices may be overwritten by the room controller.
 
-Defaults: 0.3°C tolerance, 20-minute maximum boost, at least 180 seconds AC off
-time, and a 60-minute sensor freshness limit.
+## Troubleshooting
 
-The setup form rejects duplicate device assignments and nesting of room
-thermostats. Radiators need Heat/Off and a single temperature target; an AC also
-needs Cool.
+| Symptom | Check |
+| --- | --- |
+| No devices respond | Fresh installations start observe-only; enable Control devices and select Heat or Cool. |
+| Cool is unavailable | Assign an AC supporting Heat/Cool/Off, and check it is available. |
+| Heat/Cool is paused | Read the card's status: outdoor gate, open contact, empty room, stale sensor or device error. Targets are retained. |
+| Radiators do not heat with an offline AC | An assigned AC must confirm cooling is stopped; repair it or unassign it to use radiators independently. |
+| AC does not restart immediately | The minimum off interval is at least 180 seconds. |
+| Room overshoots or undershoots | Check sensor placement/calibration, native TRV schedules and PID gains. The TRV adapter trims setpoints; it does not control valve percentage. |
+| A card is missing or old | Restart after integration updates, refresh the browser and verify the resource URL above. |
+| HACS cannot find Room Comfort | Add this URL as a custom repository of type Integration; it is not in the default catalog. |
 
-## Behaviour and limits
+No central boiler or shared multi-split coordination is provided. Sensor history
+opens through Home Assistant's more-info dialog. See [controller details](docs/control-behavior.md)
+for command ordering, safety checks and shutdown behaviour.
 
-The default radiator controller is **PID with deadband/output hysteresis**. It
-computes bounded heat demand from room temperature error and its history,
-filters the derivative, rejects integral windup, and limits output changes. A
-±0.1°C deadband suppresses noise. Radiator targets are updated no more frequently
-than every 120 seconds by default, rounded to the device's supported step.
+## Help and contributing
 
-Your usual climate/TRV entities do not expose a writable valve opening. PID
-therefore trims each head's temperature target around its own temperature
-reading, from −2°C to +3°C, clamped to its range. The native head modulates its
-valve. It stays in Heat near the room target instead of cycling between a
-maximum setpoint and Off. Off, cooling, windows and sensor failures still force
-proper shutdown. **Heat demand % is calculated demand, not measured valve position.**
+[Report a bug](https://github.com/qmciaq/ha-room-comfort/issues/new?template=bug_report.yml) · [Request a feature](https://github.com/qmciaq/ha-room-comfort/issues/new?template=feature_request.yml) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
 
-Gains and the thermal response need tuning on real equipment; this is not
-auto-tuning or a promise of a particular accuracy. A legacy on/off hysteresis
-method is available explicitly in room settings. AC remains on its native
-controller and bounded heat-boost/cooling logic.
+When reporting device behaviour, include HA/integration versions, entity capabilities
+and relevant logs; remove tokens, coordinates and personal tracker details.
 
-Lost/stale sensor data or an open/unavailable selected window contact requests
-outputs Off. Starts are interlocked against opposite modes, and the AC has a
-minimum off interval. Room target/mode are restored after restart; boost never
-resumes. Disconnected devices cannot be forced Off; errors remain visible.
-
-An assigned but unavailable AC blocks radiator heating because cooling cannot
-be confirmed stopped. Leave AC unassigned for an independent radiator-only trial.
-Native schedules or other automations must not compete for the assigned devices.
-Status describes controller intent and entity feedback, not measured heat output.
-
-AC fan speed is left at its existing setting. Central-boiler control, shared
-multi-split mode coordination, tariff optimisation, automatic PID tuning, and
-calendar-based schedules are outside this release.
-
-[Detailed control, shutdown and rollback behaviour](docs/control-behavior.md)
-
-## Development and verification
-
-Production frontend is dependency-free JavaScript. Node and Playwright are only
-used in development. Run the interactive preview from the repository root:
-
-```sh
-python3 -m http.server 8080
-```
-
-Open `http://localhost:8080/dev/`. The preview uses **simulated devices** and can
-toggle language/theme or simulate an AC outage. It never connects to the house.
+## Development and validation
 
 ```sh
 python3 scripts/validate.py
@@ -226,23 +261,14 @@ npm test
 python3 scripts/package.py
 ```
 
-**82 Python tests and 25 browser UI tests** passed locally. The browser tests
-exercise the bundled card code with simulated HA state/service objects; Python
-tests use a small fake HA API. Neither substitutes for a live installation test.
-An additional isolated **HA Core 2026.10.4** check passed setup/options flows,
-entity loading, sidebar/static frontend registration, observe-only thermostat
-services, and settings reload. Physical devices were simulated; OS network
-adapter enumeration used an empty test inventory. See [validation notes](docs/validation.md).
+Run `python3 -m http.server 8080` and open `http://localhost:8080/dev/` for the
+interactive simulated-device UI. The optional real-Core smoke check uses an isolated
+HA 2026.10.4 instance with simulated devices; install `homeassistant==2026.10.4` and
+`home-assistant-frontend==20260930.5` under Python 3.14, then run
+`python scripts/smoke_ha.py`. It never connects to your live HA.
 
-GitHub Actions includes controller/browser tests, Hassfest and HACS validation
-(the latter is skipped while private). The package workflow produces install
-and source ZIP artifacts on version tags or manual dispatch. It does not publish
-a GitHub release or change repository visibility.
-
-
-### Upgrading from 0.3
-
-Existing heating targets and their entity IDs are retained. New cooling targets
-start at Home 24°C / Away 27°C / Vacation 29°C; review them before choosing Cool.
-Coming home defaults to Heat, with a per-room selector for Cool. Refresh the browser
-after updating the integration. The repository remains private.
+Related projects: see
+[Mushroom](https://github.com/piitaya/lovelace-mushroom),
+[Better Thermostat](https://github.com/KartoffelToby/better_thermostat) and
+[Versatile Thermostat](https://github.com/jmcollin78/versatile_thermostat) for other
+approaches to dashboard cards and room control.

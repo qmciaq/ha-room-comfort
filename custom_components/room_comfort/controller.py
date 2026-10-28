@@ -9,13 +9,15 @@ import time
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, UnitOfTemperature
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval, async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util.unit_conversion import TemperatureConverter
 
 from .const import DEFAULTS, DOMAIN
 from .engine import Demand, calculate_demand
 from .pid import RoomPID, trv_target
+from .outdoor import OutdoorGate, OUTDOOR_DEFAULTS
+from .room_conditions import RoomConditions
 
 _LOGGER = logging.getLogger(__name__)
 BAD_STATES = {STATE_UNAVAILABLE, STATE_UNKNOWN}
@@ -34,6 +36,11 @@ class RoomController:
         self.cool_targets = {key: self.config[f"{key}_cool_temperature"] for key in ("home", "away", "vacation")}
         self.coming_home_mode = self.config["coming_home_mode"] if self.ac else "heat"
         self.household = household
+        self._outdoor_gate = OutdoorGate()
+        self.outdoor_status = None
+        self.conditions = RoomConditions()
+        self.condition_status = None
+        self._condition_cancel = None
         self.pid = RoomPID(self.config["pid_kp"], self.config["pid_ki"], self.config["pid_kd"], self.config["pid_deadband"])
         self.heat_output = 0.0
         self._pid_active = False
@@ -131,12 +138,15 @@ class RoomController:
 
     @property
     def temperature(self):
-        state = self._state(self.config["temperature_sensor"])
+        return self._read_temperature(self.config["temperature_sensor"], self.config["sensor_timeout_minutes"], -30, 60)
+
+    def _read_temperature(self, entity_id, timeout, minimum=-60, maximum=65):
+        state = self._state(entity_id) if entity_id else None
         if not state:
             return None
         reported = getattr(state, "last_reported", state.last_updated)
         age = self.now() - reported.timestamp()
-        if age > self.config["sensor_timeout_minutes"] * 60:
+        if age < -60 or age > timeout * 60:
             return None
         try:
             value = float(state.state)
@@ -144,9 +154,27 @@ class RoomController:
             if unit not in (UnitOfTemperature.CELSIUS, UnitOfTemperature.FAHRENHEIT):
                 return None
             value = TemperatureConverter.convert(value, unit, UnitOfTemperature.CELSIUS)
-            return value if isfinite(value) and -30 <= value <= 60 else None
+            return value if isfinite(value) and minimum <= value <= maximum else None
         except (TypeError, ValueError):
             return None
+
+    @property
+    def outdoor_settings(self):
+        policy = self.config["outdoor_policy"]
+        source = getattr(self.household, "config", {}) if policy == "inherit" else self.config
+        settings = {key: source.get(key, value) for key, value in OUTDOOR_DEFAULTS.items()}
+        if policy == "custom":
+            settings["outdoor_enabled"] = True
+            # A room may override thresholds while sharing the global sensor.
+            settings["outdoor_sensor"] = self.config["outdoor_sensor"] or getattr(self.household, "config", {}).get("outdoor_sensor", "")
+        elif policy == "disabled":
+            settings["outdoor_enabled"] = False
+        return settings
+
+    @property
+    def outdoor_temperature(self):
+        settings = self.outdoor_settings
+        return self._read_temperature(settings["outdoor_sensor"], settings["outdoor_timeout_minutes"])
 
     def _state(self, entity_id):
         state = self.hass.states.get(entity_id)
@@ -164,7 +192,8 @@ class RoomController:
 
     @callback
     def async_start(self):
-        watched = [self.config["temperature_sensor"], *self.devices, *self.config["windows"]]
+        watched = [self.config["temperature_sensor"], *self.devices, *self.config["windows"], *self.config["presence_sensors"], self.config["outdoor_sensor"]]
+        watched = [entity_id for entity_id in watched if entity_id]
         self._unsubscribers = [
             async_track_state_change_event(self.hass, watched, self._schedule),
             async_track_time_interval(self.hass, self._schedule, timedelta(seconds=15)),
@@ -187,6 +216,9 @@ class RoomController:
 
     async def async_stop(self):
         self._stopped = True
+        if self._condition_cancel:
+            self._condition_cancel()
+            self._condition_cancel = None
         for unsubscribe in self._unsubscribers:
             unsubscribe()
         if self._pending and not self._pending.done():
@@ -286,19 +318,34 @@ class RoomController:
             if state.state == "off" and self._last_ac_mode != "off":
                 self._ac_off_since = self.now()
             self._last_ac_mode = state.state
-        window_open = any(
-            (state := self._state(entity_id)) is None or state.state != "off"
-            for entity_id in self.config["windows"]
+        values = lambda ids: {eid: state.state if (state := self._state(eid)) else None for eid in ids}
+        self.condition_status = self.conditions.evaluate(
+            windows=values(self.config["windows"]), presence=values(self.config["presence_sensors"]),
+            now=self.now(), mode=self.mode, window_delay=self.config["window_open_seconds"],
+            pause_heat=self.config["pause_heat_when_empty"] and self.profile != "prewarming",
+            pause_cool=self.config["pause_cool_when_empty"] and self.profile != "prewarming",
+            heat_minutes=self.config["heat_absence_minutes"], cool_minutes=self.config["cool_absence_minutes"],
         )
+        if self._condition_cancel:
+            self._condition_cancel()
+            self._condition_cancel = None
+        if self.conditions.next_check and not self._stopped:
+            self._condition_cancel = async_call_later(self.hass, max(.05, self.conditions.next_check-self.now()), self._schedule)
+        window_open = self.condition_status == "window_open"
         self.demand = calculate_demand(
             mode=self.mode, temperature=self.temperature, target=self.target,
             tolerance=self.config["tolerance"], previous=self.demand,
             boost_until=self.boost_until, now=self.now(), window_open=window_open,
         )
+        self.outdoor_status = self._outdoor_gate.evaluate(self.mode, self.outdoor_temperature, self.outdoor_settings)
+        if self.mode != "off" and self.condition_status == "room_unoccupied" and self.demand.status not in ("sensor_unavailable", "window_open"):
+            self.demand = Demand(status="room_unoccupied", boost_finished=self.boost_until is not None)
+        if self.outdoor_status and self.demand.status not in ("sensor_unavailable", "window_open", "room_unoccupied"):
+            self.demand = Demand(status=self.outdoor_status, boost_finished=self.boost_until is not None)
         if self.demand.boost_finished:
             self.boost_until = None
         self._pid_active = (self.config["control_method"] == "pid" and self.mode == "heat"
-                            and self.temperature is not None and not window_open)
+                            and self.temperature is not None and not self.condition_status and not self.outdoor_status)
         if self._pid_active:
             self.heat_output = self.pid.update(self.temperature, self.target, self.now())
             self.demand = Demand(radiator_heat=self.heat_output > .03, ac_mode=self.demand.ac_mode,

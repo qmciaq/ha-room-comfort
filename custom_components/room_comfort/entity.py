@@ -52,4 +52,6 @@ class HouseholdEntity(Entity):
                 "presence_entities": c.config["presence_entities"], "home_zone": c.config["home_zone"],
                 "memberships": c.memberships, "prewarm_ends_at": c.prewarm_until,
                 "prewarm_ready": c.prewarm_ready, "household_entities": dict(c.entity_ids),
-                "away_delay_minutes": c.config["away_delay_minutes"]}
+                "away_delay_minutes": c.config["away_delay_minutes"],
+                "outdoor_settings": {key: value for key, value in c.config.items() if key.startswith("outdoor_")}}
+

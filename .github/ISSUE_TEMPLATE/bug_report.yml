@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a Room Comfort issue
+labels: []
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Home Assistant and Room Comfort versions
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: What happened, and what did you expect?
+      description: Include steps to reproduce and whether the room uses live control.
+    validations:
+      required: true
+  - type: textarea
+    id: devices
+    attributes:
+      label: Devices and configuration
+      description: Include TRV/AC models, supported modes and relevant outdoor/window/presence settings. Remove personal tracker and location details.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Remove tokens, coordinates and other private information.

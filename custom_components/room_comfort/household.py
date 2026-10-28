@@ -10,8 +10,9 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 from .presence import all_outside, zone_membership
+from .outdoor import OUTDOOR_DEFAULTS
 
-HOUSE_DEFAULTS = {"presence_entities": [], "home_zone": "zone.home",
+HOUSE_DEFAULTS = {**OUTDOOR_DEFAULTS, "presence_entities": [], "home_zone": "zone.home",
                   "away_delay_minutes": 5, "prewarm_hours": 4}
 
 
@@ -71,7 +72,8 @@ class Household:
             unsubscribe()
         self.config = {**HOUSE_DEFAULTS, **config}
         self.away_since = None
-        watched = [self.config["home_zone"], *self.config["presence_entities"]]
+        watched = [self.config["home_zone"], *self.config["presence_entities"], self.config["outdoor_sensor"]]
+        watched = [entity_id for entity_id in watched if entity_id]
         self._unsubscribers = [
             async_track_state_change_event(self.hass, watched, self._schedule),
             async_track_time_interval(self.hass, self._schedule, timedelta(seconds=30)),
@@ -90,7 +92,7 @@ class Household:
     def prewarm_ready(self):
         controlled = [r for r in self.rooms if r.enabled]
         return bool(controlled) and all(r.coming_home_ready and not getattr(r, "errors", {})
-            and getattr(getattr(r, "demand", None), "status", None) not in ("sensor_unavailable", "window_open")
+            and getattr(getattr(r, "demand", None), "status", None) not in ("sensor_unavailable", "window_open", "outdoor_unavailable")
             for r in controlled)
 
     async def async_change(self, key, enabled):

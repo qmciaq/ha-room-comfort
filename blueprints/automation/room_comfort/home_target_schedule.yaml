@@ -75,7 +75,7 @@ variables:
   inactive_temperature: !input inactive_temperature
   target_number: >-
     {{ (state_attr(room, 'cooling_profile_temperature_entities' if target_mode == 'cool'
-         else 'heating_profile_temperature_entities') or {}).get('home', '') }}
+         else 'heating_profile_temperature_entities') or {}).get('home') or '' }}
   desired_temperature: >-
     {{ active_temperature if is_state(schedule_entity, 'on') else inactive_temperature }}
 conditions:

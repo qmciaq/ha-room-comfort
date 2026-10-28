@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest an improvement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe a concrete room-control or dashboard use case.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Include how it should interact with Home/Away, manual controls and existing device restrictions.

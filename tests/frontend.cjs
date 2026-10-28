@@ -130,7 +130,7 @@ test('HTML from entity names and service errors is escaped',async()=>{
 test('graphical card editor emits config-changed',async()=>{
   await page.evaluate(()=>{const editor=document.createElement('room-comfort-card-editor');editor.setConfig({entity:'climate.salon'});editor.hass=demo.hass;editor.addEventListener('config-changed',e=>window.editorConfig=e.detail.config);document.body.append(editor);});
   const editor=page.locator('room-comfort-card-editor');
-  await editor.locator('select').selectOption('climate.biuro');
+  await editor.locator('select[data-key=entity]').selectOption('climate.biuro');
   assert.equal(await page.evaluate(()=>window.editorConfig.entity),'climate.biuro');
 });
 test('Polish labels and dark theme render',async()=>{
@@ -203,5 +203,35 @@ test('presence chips show individual membership and explain the all-away rule',a
   const home=page.locator('room-comfort-home-controls');
   assert.match(await home.locator('.trackers').textContent(),/Dominik · inside/);
   assert.match(await home.locator('.home-bottom').textContent(),/every tracker outside/);
+});
+
+test('compact controls change the same room entity and retain mode controls',async()=>{
+  const mini=page.locator('room-comfort-mini-card').first();
+  await mini.getByRole('button',{name:'Target temperature +',exact:true}).click();
+  assert.equal(await salon().getByRole('slider').inputValue(),'22');
+  await mini.getByRole('button',{name:'Cool',exact:true}).click();
+  assert.equal(await page.evaluate(()=>demo.states['climate.salon'].state),'cool');
+  assert.match(await mini.locator('[data-target]').textContent(),/24/);
+});
+
+test('status tile opens HA room details',async()=>{
+  await page.locator('room-comfort-status-card').first().getByRole('button').click();
+  assert.match(await page.locator('#toast').textContent(),/climate.salon/);
+});
+
+test('outdoor conditions, window delay and room presence are visible',async()=>{
+  assert.match(await salon().locator('.condition-note').textContent(),/Heat < 16°C/);
+  assert.match(await salon().locator('.condition-note').textContent(),/10s delay/);
+  assert.match(await salon().locator('.condition-note').textContent(),/Presence detected/);
+  await page.evaluate(()=>{demo.replace('climate.salon',null,{controller_status:'room_unoccupied',condition_status:'room_unoccupied',room_occupied:false});demo.refresh();});
+  assert.match(await salon().locator('.status').textContent(),/Room empty/);
+  assert.match(await page.locator('room-comfort-mini-card').first().locator('.status').textContent(),/Room empty/);
+});
+
+test('compact and tile cards fit two dashboard columns on mobile',async()=>{
+  await page.setViewportSize({width:390,height:844});
+  const widths=await page.locator('.demo-widget').evaluateAll(nodes=>nodes.map(n=>({client:n.clientWidth,scroll:n.shadowRoot.querySelector('.compact').scrollWidth})));
+  assert.ok(widths.every(x=>x.scroll<=x.client),JSON.stringify(widths));
+  await page.locator('#widget-showcase').screenshot({path:path.join(root,'docs/images/widgets.png')});
 });
 

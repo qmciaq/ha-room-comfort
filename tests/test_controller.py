@@ -55,6 +55,7 @@ stub("homeassistant.core", callback=lambda f: f)
 stub("homeassistant.exceptions", HomeAssistantError=HomeAssistantError)
 stub("homeassistant.helpers")
 stub("homeassistant.helpers.event", async_track_state_change_event=lambda *a: lambda: None,
+     async_call_later=lambda *a: lambda: None,
      async_track_time_interval=lambda *a: lambda: None)
 stub("homeassistant.helpers.storage", Store=FakeStore)
 stub("homeassistant.util")
@@ -402,6 +403,93 @@ class ControllerTests(unittest.IsolatedAsyncioTestCase):
             await room.async_set_coming_home_mode("cool")
         with self.assertRaises(HomeAssistantError):
             await room.async_set_profile_temperature("home", 25, "cool")
+
+    async def test_global_outdoor_gate_stops_pid_and_keeps_requested_mode(self):
+        self.room.config["control_method"] = "pid"
+        self.room.household = SimpleNamespace(profile="home", config={"outdoor_enabled": True,
+            "outdoor_sensor": "sensor.outside", "outdoor_heat_below": 16})
+        self.states["sensor.outside"] = state("18", unit_of_measurement="°C")
+        await self.heat()
+        self.assertEqual(self.room.mode, "heat")
+        self.assertEqual(self.room.target, 21)
+        self.assertEqual(self.room.status, "outdoor_heat_blocked")
+        self.assertFalse(self.room._pid_active)
+        self.assertTrue(all(self.states[e].state == "off" for e in self.room.devices))
+        self.states["sensor.outside"].state = "15"
+        await self.room.async_evaluate()
+        self.assertTrue(self.room._pid_active)
+        self.assertEqual(self.states["climate.r1"].state, "heat")
+
+    async def test_room_outdoor_override_and_disable(self):
+        self.room.household = SimpleNamespace(profile="home", config={"outdoor_enabled": True,
+            "outdoor_sensor": "sensor.outside", "outdoor_heat_below": 16})
+        self.states["sensor.outside"] = state("18", unit_of_measurement="°C")
+        self.room.config.update(outdoor_policy="custom", outdoor_heat_below=20)
+        await self.heat()
+        self.assertEqual(self.states["climate.r1"].state, "heat")
+        self.room.config["outdoor_policy"] = "disabled"
+        self.states["sensor.outside"].state = "unavailable"
+        await self.room.async_evaluate()
+        self.assertEqual(self.states["climate.r1"].state, "heat")
+
+    async def test_outdoor_fahrenheit_conversion_stale_and_boost_cancellation(self):
+        self.room.config.update(outdoor_policy="custom", outdoor_sensor="sensor.outside")
+        self.states["sensor.outside"] = state("59", unit_of_measurement="°F")
+        self.assertAlmostEqual(self.room.outdoor_temperature, 15)
+        await self.room.async_boost()
+        self.states["sensor.outside"].state = "unavailable"
+        await self.room.async_evaluate()
+        self.assertEqual(self.room.demand.status, "outdoor_unavailable")
+        self.assertIsNone(self.room.boost_until)
+        self.states["sensor.outside"] = state("15", unit_of_measurement="°C")
+        self.states["sensor.outside"].last_reported -= timedelta(hours=3)
+        self.assertIsNone(self.room.outdoor_temperature)
+
+    async def test_window_delay_stops_pid_then_resumes_on_close(self):
+        self.room.config.update(control_method="pid", windows=["binary_sensor.window"], window_open_seconds=10)
+        self.states["binary_sensor.window"] = state("off")
+        await self.heat()
+        self.states["binary_sensor.window"].state = "on"
+        await self.room.async_evaluate()
+        self.assertEqual(self.states["climate.r1"].state, "heat")
+        self.clock += 10
+        await self.room.async_evaluate()
+        self.assertEqual(self.room.status, "window_open")
+        self.assertTrue(all(self.states[e].state == "off" for e in self.room.devices))
+        self.states["binary_sensor.window"].state = "off"
+        self.clock += 31
+        await self.room.async_evaluate()
+        self.assertEqual(self.states["climate.r1"].state, "heat")
+
+    async def test_empty_room_stops_ac_and_presence_resumes_subject_to_cooldown(self):
+        self.room.config.update(presence_sensors=["binary_sensor.presence"], cool_absence_minutes=1)
+        self.states["binary_sensor.presence"] = state("on")
+        self.states["sensor.room"].state = "28"
+        await self.room.async_change(mode="cool", enabled=True)
+        self.states["binary_sensor.presence"].state = "off"
+        await self.room.async_evaluate()
+        self.clock += 60
+        await self.room.async_evaluate()
+        self.assertEqual(self.room.status, "room_unoccupied")
+        self.assertEqual(self.states["climate.ac"].state, "off")
+        self.states["binary_sensor.presence"].state = "on"
+        await self.room.async_evaluate()
+        self.assertEqual(self.room.status, "ac_cooldown")
+        self.clock += 181
+        await self.room.async_evaluate()
+        self.assertEqual(self.states["climate.ac"].state, "cool")
+
+    async def test_manual_return_bypasses_empty_room_pause_but_not_windows(self):
+        self.room.config.update(presence_sensors=["binary_sensor.presence"], heat_absence_minutes=0)
+        self.states["binary_sensor.presence"] = state("off")
+        await self.heat()
+        self.assertEqual(self.room.status, "room_unoccupied")
+        self.room.household = SimpleNamespace(profile="prewarming", config={})
+        await self.room.async_evaluate()
+        self.assertTrue(self.room.demand.radiator_heat)
+        self.room.config["windows"] = ["binary_sensor.missing"]
+        await self.room.async_evaluate()
+        self.assertEqual(self.room.status, "window_open")
 
 
 if __name__ == "__main__":

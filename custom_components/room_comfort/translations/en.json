@@ -4,13 +4,13 @@
     "step": {
       "user": {
         "title": "Room thermostat",
-        "description": "Choose the devices for one room. Control devices starts off so you can review decisions before operating hardware. All selected actuators will be managed together.",
+        "description": "Choose the devices for one room. Control devices starts off so you can review decisions before operating hardware. All selected actuators will be managed together. Room presence: every sensor must be off to start absence timers; unknown keeps comfort. Coming home bypasses empty-room pauses, while windows and outdoor limits still apply.",
         "data": {
           "name": "Room name",
           "temperature_sensor": "Room temperature sensor",
           "radiators": "Radiator thermostats",
           "air_conditioner": "Air conditioner (optional)",
-          "windows": "Window contacts (optional)",
+          "windows": "Door/window contacts (open = on)",
           "tolerance": "Temperature tolerance (°C)",
           "boost_minutes": "Boost duration (minutes)",
           "ac_cooldown_seconds": "AC minimum off time (seconds)",
@@ -27,7 +27,19 @@
           "home_cool_temperature": "Home — cooling (°C)",
           "away_cool_temperature": "Away — cooling (°C)",
           "vacation_cool_temperature": "Vacation — cooling (°C)",
-          "coming_home_mode": "Coming home: heat or cool"
+          "coming_home_mode": "Coming home: heat or cool",
+          "outdoor_policy": "Outdoor limits: inherit global / custom room / disabled",
+          "outdoor_sensor": "Outdoor sensor (room: leave empty to use global sensor)",
+          "outdoor_heat_below": "Allow heating below outdoor temperature (°C)",
+          "outdoor_cool_above": "Allow cooling above outdoor temperature (°C)",
+          "outdoor_hysteresis": "Outdoor gate hysteresis (°C)",
+          "outdoor_timeout_minutes": "Outdoor sensor freshness limit (minutes)",
+          "window_open_seconds": "Continuous open delay before pausing (seconds)",
+          "presence_sensors": "Room presence/motion sensors (on = occupied)",
+          "pause_heat_when_empty": "Pause heating when room is empty",
+          "pause_cool_when_empty": "Pause AC cooling when room is empty",
+          "heat_absence_minutes": "No presence before pausing heating (minutes)",
+          "cool_absence_minutes": "No presence before pausing AC cooling (minutes)"
         }
       }
     },
@@ -38,20 +50,22 @@
       "unsupported_device": "Radiators require Heat, Off and a single target temperature. The AC also requires Cool.",
       "already_assigned": "A selected device is already controlled by another Room Comfort room.",
       "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units.",
-      "cooling_requires_ac": "Assign an air conditioner to use cooling for Coming home."
+      "cooling_requires_ac": "Assign an air conditioner to use cooling for Coming home.",
+      "outdoor_sensor_required": "Choose an outdoor temperature sensor; room overrides can use the global sensor.",
+      "outdoor_limits_overlap": "Heating and cooling limits, including hysteresis, must not overlap."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Room thermostat",
-        "description": "Choose the devices for one room. Control devices starts off so you can review decisions before operating hardware. All selected actuators will be managed together.",
+        "description": "Choose the devices for one room. Control devices starts off so you can review decisions before operating hardware. All selected actuators will be managed together. Room presence: every sensor must be off to start absence timers; unknown keeps comfort. Coming home bypasses empty-room pauses, while windows and outdoor limits still apply.",
         "data": {
           "name": "Room name",
           "temperature_sensor": "Room temperature sensor",
           "radiators": "Radiator thermostats",
           "air_conditioner": "Air conditioner (optional)",
-          "windows": "Window contacts (optional)",
+          "windows": "Door/window contacts (open = on)",
           "tolerance": "Temperature tolerance (°C)",
           "boost_minutes": "Boost duration (minutes)",
           "ac_cooldown_seconds": "AC minimum off time (seconds)",
@@ -68,7 +82,19 @@
           "home_cool_temperature": "Home — cooling (°C)",
           "away_cool_temperature": "Away — cooling (°C)",
           "vacation_cool_temperature": "Vacation — cooling (°C)",
-          "coming_home_mode": "Coming home: heat or cool"
+          "coming_home_mode": "Coming home: heat or cool",
+          "outdoor_policy": "Outdoor limits: inherit global / custom room / disabled",
+          "outdoor_sensor": "Outdoor sensor (room: leave empty to use global sensor)",
+          "outdoor_heat_below": "Allow heating below outdoor temperature (°C)",
+          "outdoor_cool_above": "Allow cooling above outdoor temperature (°C)",
+          "outdoor_hysteresis": "Outdoor gate hysteresis (°C)",
+          "outdoor_timeout_minutes": "Outdoor sensor freshness limit (minutes)",
+          "window_open_seconds": "Continuous open delay before pausing (seconds)",
+          "presence_sensors": "Room presence/motion sensors (on = occupied)",
+          "pause_heat_when_empty": "Pause heating when room is empty",
+          "pause_cool_when_empty": "Pause AC cooling when room is empty",
+          "heat_absence_minutes": "No presence before pausing heating (minutes)",
+          "cool_absence_minutes": "No presence before pausing AC cooling (minutes)"
         }
       },
       "household": {
@@ -78,7 +104,13 @@
           "presence_entities": "People / trackers (all must be outside)",
           "home_zone": "Home zone",
           "away_delay_minutes": "Away confirmation delay (minutes)",
-          "prewarm_hours": "Coming home timeout (hours)"
+          "prewarm_hours": "Coming home timeout (hours)",
+          "outdoor_enabled": "Use outdoor temperature limits",
+          "outdoor_sensor": "Outdoor sensor (room: leave empty to use global sensor)",
+          "outdoor_heat_below": "Allow heating below outdoor temperature (°C)",
+          "outdoor_cool_above": "Allow cooling above outdoor temperature (°C)",
+          "outdoor_hysteresis": "Outdoor gate hysteresis (°C)",
+          "outdoor_timeout_minutes": "Outdoor sensor freshness limit (minutes)"
         }
       }
     },
@@ -89,7 +121,9 @@
       "unsupported_device": "Radiators require Heat, Off and a single target temperature. The AC also requires Cool.",
       "already_assigned": "A selected device is already controlled by another Room Comfort room.",
       "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units.",
-      "cooling_requires_ac": "Assign an air conditioner to use cooling for Coming home."
+      "cooling_requires_ac": "Assign an air conditioner to use cooling for Coming home.",
+      "outdoor_sensor_required": "Choose an outdoor temperature sensor; room overrides can use the global sensor.",
+      "outdoor_limits_overlap": "Heating and cooling limits, including hysteresis, must not overlap."
     }
   }
 }

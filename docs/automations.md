@@ -7,12 +7,20 @@ anything until you create and enable an automation from them.
 
 ## Install the blueprints
 
-The repository is private. Home Assistant's URL importer cannot use your browser's
-GitHub login. Download this repository while signed in and copy
-`blueprints/automation/room_comfort/` into
-`/config/blueprints/automation/room_comfort/`. The manual install ZIP includes this
-directory alongside `custom_components/`; extract both directories into `/config`.
-Installing the integration through HACS alone does not install blueprints.
+The repository is public, so you can import each blueprint directly from its GitHub URL.
+Open the import links below, choose your HA instance, and confirm the import.
+
+| Blueprint | Import |
+| --- | --- |
+| Scheduled Home temperature | [Import into HA](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fqmciaq%2Fha-room-comfort%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Froom_comfort%2Fhome_target_schedule.yaml) |
+| Coming-home button | [Import into HA](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fqmciaq%2Fha-room-comfort%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Froom_comfort%2Fcoming_home_button.yaml) |
+| Notify when home is ready | [Import into HA](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fqmciaq%2Fha-room-comfort%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Froom_comfort%2Fcoming_home_ready.yaml) |
+| Room mode from a trigger | [Import into HA](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fqmciaq%2Fha-room-comfort%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Froom_comfort%2Froom_mode_trigger.yaml) |
+
+Alternatively, paste the GitHub file URL into HA's **Import blueprint** dialog.
+For manual installation, copy `blueprints/automation/room_comfort/` into
+`/config/blueprints/automation/room_comfort/`. The manual install ZIP includes it.
+HACS integration installation does not copy these automation blueprints.
 
 Open **Settings → Automations & scenes → Blueprints**, reload blueprints if needed,
 then choose **Create automation** beside a Room Comfort blueprint. The Room Comfort
@@ -69,3 +77,8 @@ second presence automation, and none of these blueprints starts Vacation
 automatically. Heat and Cool are explicit modes; there is no automatic seasonal
 changeover. Coming home uses each room's selected return mode until it ends.
 Cooling uses hysteresis and the AC off-time guard; radiator PID applies to heating.
+
+Outdoor limits and delayed door/window protection apply to all blueprints. Room
+presence pauses apply to ordinary heating/cooling; explicitly starting Coming home
+bypasses empty-room timers so it can prepare an empty house. It still obeys
+outdoor/window restrictions and the live-control opt-in.

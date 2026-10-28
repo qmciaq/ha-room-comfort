@@ -1,15 +1,24 @@
 """Constants for Room Comfort."""
 
 from homeassistant.const import Platform
+from .outdoor import OUTDOOR_DEFAULTS
 
 DOMAIN = "room_comfort"
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 PLATFORMS = [Platform.CLIMATE, Platform.BUTTON, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
 DEFAULTS = {
+    **{key: value for key, value in OUTDOOR_DEFAULTS.items() if key != "outdoor_enabled"},
+    "outdoor_policy": "inherit",
     "name": "Room",
     "radiators": [],
     "air_conditioner": "",
     "windows": [],
+    "window_open_seconds": 10,
+    "presence_sensors": [],
+    "pause_heat_when_empty": True,
+    "pause_cool_when_empty": True,
+    "heat_absence_minutes": 30,
+    "cool_absence_minutes": 10,
     "tolerance": 0.3,
     "boost_minutes": 20,
     "ac_cooldown_seconds": 180,

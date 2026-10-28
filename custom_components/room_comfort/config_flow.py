@@ -10,6 +10,35 @@ from .const import DEFAULTS, DOMAIN
 from .household import HOUSE_DEFAULTS
 
 
+def outdoor_fields(values, room=False):
+    fields = {}
+    if room:
+        fields[vol.Required("outdoor_policy", default=values["outdoor_policy"])] = selector.SelectSelector(selector.SelectSelectorConfig(options=["inherit", "custom", "disabled"]))
+    else:
+        fields[vol.Required("outdoor_enabled", default=values["outdoor_enabled"])] = selector.BooleanSelector()
+    fields[vol.Optional("outdoor_sensor", description={"suggested_value": values["outdoor_sensor"]})] = selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="temperature"))
+    for key, minimum, maximum in (("outdoor_heat_below", -30, 40), ("outdoor_cool_above", 5, 50), ("outdoor_hysteresis", 0, 5), ("outdoor_timeout_minutes", 5, 1440)):
+        fields[vol.Required(key, default=values[key])] = vol.All(vol.Coerce(float), vol.Range(min=minimum, max=maximum))
+    return fields
+
+
+def validate_outdoor(hass, values, room=False):
+    active = values.get("outdoor_policy") == "custom" if room else values.get("outdoor_enabled")
+    if not active:
+        return None
+    sensor = values.get("outdoor_sensor", "")
+    if not sensor and room:
+        household = hass.data.get(DOMAIN, {}).get("household")
+        sensor = household.config.get("outdoor_sensor", "") if household else ""
+    state = hass.states.get(sensor) if sensor else None
+    if not state or state.attributes.get("unit_of_measurement") not in ("°C", "°F"):
+        return "outdoor_sensor_required"
+    band = values["outdoor_hysteresis"]
+    if values["outdoor_heat_below"] + band >= values["outdoor_cool_above"] - band:
+        return "outdoor_limits_overlap"
+    return None
+
+
 def room_schema(values):
     values = {**DEFAULTS, **values}
     fields = {
@@ -40,6 +69,13 @@ def room_schema(values):
         key = f"{profile}_cool_temperature"
         fields[vol.Required(key, default=values[key])] = vol.All(vol.Coerce(float), vol.Range(min=5, max=30))
     fields[vol.Required("coming_home_mode", default=values["coming_home_mode"])] = selector.SelectSelector(selector.SelectSelectorConfig(options=["heat", "cool"]))
+    fields[vol.Required("window_open_seconds", default=values["window_open_seconds"])] = vol.All(vol.Coerce(float), vol.Range(min=0, max=600))
+    fields[vol.Optional("presence_sensors", default=values["presence_sensors"])] = selector.EntitySelector(selector.EntitySelectorConfig(domain="binary_sensor", multiple=True))
+    for key in ("pause_heat_when_empty", "pause_cool_when_empty"):
+        fields[vol.Required(key, default=values[key])] = selector.BooleanSelector()
+    for key in ("heat_absence_minutes", "cool_absence_minutes"):
+        fields[vol.Required(key, default=values[key])] = vol.All(vol.Coerce(float), vol.Range(min=0, max=1440))
+    fields.update(outdoor_fields(values, room=True))
     return vol.Schema(fields)
 
 
@@ -75,7 +111,7 @@ def validate_room(hass, data, entry_id=None):
     sensor = hass.states.get(data["temperature_sensor"])
     if sensor is None or sensor.attributes.get("unit_of_measurement") not in ("°C", "°F"):
         return "invalid_sensor"
-    return None
+    return validate_outdoor(hass, data, room=True)
 
 
 class RoomComfortConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -134,14 +170,20 @@ class HouseholdOptionsFlow(config_entries.OptionsFlowWithReload):
 
     async def async_step_init(self, user_input=None):
         values = {**HOUSE_DEFAULTS, **self.config_entry.data, **self.config_entry.options}
+        errors = {}
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-        schema = vol.Schema({
+            values = {**HOUSE_DEFAULTS, **user_input}
+            if error := validate_outdoor(self.hass, values):
+                errors["base"] = error
+            else:
+                return self.async_create_entry(title="", data=values)
+        fields = {
             vol.Required("presence_entities", default=values["presence_entities"]): selector.EntitySelector(selector.EntitySelectorConfig(domain=["person", "device_tracker"], multiple=True)),
             vol.Required("home_zone", default=values["home_zone"]): selector.EntitySelector(selector.EntitySelectorConfig(domain="zone")),
             vol.Required("away_delay_minutes", default=values["away_delay_minutes"]): vol.All(vol.Coerce(int), vol.Range(min=0, max=60)),
             vol.Required("prewarm_hours", default=values["prewarm_hours"]): vol.All(vol.Coerce(float), vol.Range(min=.5, max=24)),
-        })
-        return self.async_show_form(step_id="household", data_schema=schema,
-            description_placeholders={"purpose": "Home modes: all trackers must be outside the selected zone. Unknown states keep Home comfort. Vacation is manual; prewarm ends on arrival, cancellation or timeout."})
+        }
+        fields.update(outdoor_fields(values))
+        return self.async_show_form(step_id="household", data_schema=vol.Schema(fields), errors=errors,
+            description_placeholders={"purpose": "Home modes: all trackers must be outside the selected zone. Unknown states keep Home comfort. Vacation is manual; Coming home ends on arrival, cancellation or timeout. Outdoor limits are global defaults; rooms can inherit, override or disable them."})
 

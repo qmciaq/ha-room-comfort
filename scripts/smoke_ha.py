@@ -78,7 +78,7 @@ async def main():
             assert hass.states.get("climate.test_radiator_1").state == "off"
             # The card's public JavaScript must actually be served, not just registered.
             async with ClientSession() as session:
-                async with session.get("http://127.0.0.1:8899/room_comfort_frontend/room-comfort.js?v=0.4.0") as response:
+                async with session.get("http://127.0.0.1:8899/room_comfort_frontend/room-comfort.js?v=0.5.0") as response:
                     assert response.status == 200, response.status
                     assert "room-comfort-card" in await response.text()
             # Exercise the real options form and room reload with settings intact.
@@ -86,6 +86,7 @@ async def main():
             options = await hass.config_entries.options.async_init(entry.entry_id)
             assert options["type"] == "form", options
             updated_options = {**entry.data, "boost_minutes": 25, "home_temperature": 22}
+            updated_options = {key: value for key, value in updated_options.items() if key not in ("outdoor_sensor", "air_conditioner") or value}
             changed = await hass.config_entries.options.async_configure(options["flow_id"], updated_options)
             assert changed["type"] == "create_entry", changed
             await hass.async_block_till_done()
@@ -138,6 +139,47 @@ async def main():
             assert entry.runtime_data.cool_targets["home"] == 25
             from smoke_blueprints import async_check_blueprints
             await async_check_blueprints(hass, room.entity_id, home)
+            # Exercise outdoor inheritance and form validation in real Core.
+            await home.async_change("coming_home", False)
+            hass.states.async_set("sensor.test_outdoor", "18", {"device_class": "temperature", "unit_of_measurement": "°C"})
+            home_options = await hass.config_entries.options.async_init(household.entry_id)
+            from custom_components.room_comfort.household import HOUSE_DEFAULTS
+            outdoor_options = {key: home.config[key] for key in HOUSE_DEFAULTS}
+            outdoor_options.update(outdoor_enabled=True, outdoor_sensor="sensor.test_outdoor", outdoor_heat_below=16,
+                                   outdoor_cool_above=24, outdoor_hysteresis=.5)
+            changed = await hass.config_entries.options.async_configure(home_options["flow_id"], outdoor_options)
+            assert changed["type"] == "create_entry", changed
+            await hass.async_block_till_done()
+            await entry.runtime_data.async_change(mode="heat")
+            assert entry.runtime_data.demand.status == "outdoor_heat_blocked"
+            assert entry.runtime_data.config["outdoor_policy"] == "inherit"
+            hass.states.async_set("binary_sensor.test_window", "off")
+            hass.states.async_set("binary_sensor.test_presence", "on")
+            options = await hass.config_entries.options.async_init(entry.entry_id)
+            room_options = {**entry.runtime_data.config, "windows": ["binary_sensor.test_window"],
+                            "window_open_seconds": .4, "presence_sensors": ["binary_sensor.test_presence"],
+                            "heat_absence_minutes": 0, "outdoor_policy": "custom", "outdoor_heat_below": 20}
+            room_options = {key: value for key, value in room_options.items() if key not in ("outdoor_sensor", "air_conditioner") or value}
+            changed = await hass.config_entries.options.async_configure(options["flow_id"], room_options)
+            assert changed["type"] == "create_entry", changed
+            await hass.async_block_till_done()
+            c = entry.runtime_data
+            assert c.outdoor_settings["outdoor_sensor"] == "sensor.test_outdoor"
+            assert c.outdoor_status is None
+            hass.states.async_set("binary_sensor.test_window", "on")
+            await asyncio.sleep(.3)
+            assert c.conditions.window_pending
+            await asyncio.sleep(.6)
+            assert c.demand.status == "window_open", c.demand
+            hass.states.async_set("binary_sensor.test_window", "off")
+            hass.states.async_set("binary_sensor.test_presence", "off")
+            await asyncio.sleep(.35)
+            assert c.demand.status == "room_unoccupied", c.demand
+            hass.states.async_set("binary_sensor.test_presence", "on")
+            await asyncio.sleep(.35)
+            assert c.demand.status not in ("window_open", "room_unoccupied")
+            assert c.enabled is False
+            print("Outdoor global/room forms, inherited sensor, actual delayed window callback and presence pause/resume passed.")
             print(f"HA {importlib.metadata.version('homeassistant')}: room and household flows, PID metadata, profile numbers, presence, vacation/prewarm switches, frontend and settings reload passed.")
         finally:
             await hass.async_stop(force=True)

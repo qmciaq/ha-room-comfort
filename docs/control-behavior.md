@@ -1,4 +1,4 @@
-# Room Comfort control behaviour — 0.4.0
+# Room Comfort control behaviour — 0.5.0
 
 ## Radiator PID
 
@@ -87,3 +87,29 @@ and removing its integration entry reverses ownership. Old device schedules or
 targets are not restored automatically. Shared multi-split restrictions and
 central-boiler operation are outside this integration.
 
+
+## Outdoor gates, openings and room occupancy (0.5)
+
+Outdoor control starts disabled. Global Home modes settings supply a temperature
+sensor, Heat-below / Cool-above thresholds, a hysteresis band and freshness timeout.
+Room policy is inherit/custom/disabled; custom thresholds can share the global
+sensor or select another sensor. Readings accept °C/°F, reject nonfinite/out-of-range
+values and stale reports, and are evaluated in °C. Enabled outdoor policies with
+invalid data pause outputs. Latches reset when settings change or HA restarts.
+
+Heat eligibility starts strictly below the limit and stops at limit plus the
+band. Cooling starts strictly above the limit and stops at limit minus the band.
+This gate preserves room mode/target, disables PID output and cancels an active
+boost when blocked. Manual Coming home does not bypass outdoor gates.
+
+Each selected contact has an independent continuous-open timer (default 10s).
+Brief opening/closing does not accumulate time. Unknown contact state blocks
+immediately. Closing clears its timer. A scheduled callback evaluates the actual
+deadline, alongside the 15s periodic reevaluation and debounced state events.
+
+Room occupancy is occupied if any sensor is on, empty only if every sensor is off,
+and uncertain otherwise. Uncertain readings reset absence timing and keep comfort.
+Heating and cooling can each pause after their own delay (30/10 minutes by default),
+or be exempted. Timers reset on reload/restart. Empty-room pauses cancel boost and
+suspend PID; detected presence allows normal demand again subject to AC off time.
+Coming home bypasses occupancy pauses while active; doors/windows still apply.

@@ -13,6 +13,7 @@
 <body>
   <div class="preview-bar"><div><strong>Interactive UI preview</strong><span>Simulated devices · no connection to your home</span></div><div class="preview-actions"><button id="theme">Dark mode</button><button id="fault">Simulate AC offline</button><button id="observe">Salon: observe only</button><select id="language" aria-label="Preview language"><option value="en">English</option><option value="pl">Polski</option></select></div></div>
   <room-comfort-overview id="overview"></room-comfort-overview>
+  <section id="widget-showcase" style="max-width:1216px;margin:0 auto 36px;padding:0 16px"><h2 style="font-size:20px;font-weight:500">Smaller dashboard widgets</h2><p style="font-size:12px;color:var(--secondary-text-color)">Compact controls and status tiles · arrange in a two-column grid</p><div id="compact-widgets" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:650px"></div><div id="status-widgets" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:650px;margin-top:14px"></div></section>
   <p class="demo-note">The same room card works in the Room Comfort sidebar and in any Home Assistant dashboard.<br>These sample temperatures and devices are for interaction testing only.</p>
   <div class="toast" id="toast" hidden role="status"></div>
   <script>
@@ -40,10 +41,14 @@
     addRoom('salon','Salon',19.8,21.5,'heat','heating',['Radiator · balcony','Radiator · sofa']);
     addRoom('biuro','Biuro',21.0,21.0,'heat','idle',['Radiator · desk'],false);
     addRoom('sypialnia','Sypialnia',24.4,22.0,'cool','cooling',['Radiator · window']);
+    put('sensor.outdoor','12',{friendly_name:'Outside temperature',unit_of_measurement:'°C'});
+    put('binary_sensor.salon_window','off',{friendly_name:'Salon balcony window'});
+    put('binary_sensor.salon_presence','on',{friendly_name:'Salon presence'});
+    replace('climate.salon',null,{outdoor_policy:'inherit',outdoor_temperature:12,outdoor_settings:{outdoor_enabled:true,outdoor_sensor:'sensor.outdoor',outdoor_heat_below:16,outdoor_cool_above:24,outdoor_hysteresis:.5},windows:['binary_sensor.salon_window'],window_open_seconds:10,presence_sensors:['binary_sensor.salon_presence'],room_occupied:true,pause_heat_when_empty:true,pause_cool_when_empty:true,heat_absence_minutes:30,cool_absence_minutes:10});
     const homeEntities={vacation:'switch.home_vacation',coming_home:'switch.home_coming_home',automatic_away:'switch.home_automatic_away',mode:'sensor.home_mode'};
     for(const key of ['vacation','coming_home','automatic_away'])put(homeEntities[key],key==='automatic_away'?'on':'off',{friendly_name:key});
     put('person.dominik','home',{friendly_name:'Dominik'});put('person.patrycja','home',{friendly_name:'Patrycja'});
-    put(homeEntities.mode,'home',{room_comfort_household:true,home_profile:'home',household_entities:homeEntities,memberships:{'person.dominik':true,'person.patrycja':true},away_delay_minutes:5,prewarm_ready:false});
+    put(homeEntities.mode,'home',{outdoor_settings:{outdoor_enabled:true,outdoor_sensor:'sensor.outdoor',outdoor_heat_below:16,outdoor_cool_above:24,outdoor_hysteresis:.5},room_comfort_household:true,home_profile:'home',household_entities:homeEntities,memberships:{'person.dominik':true,'person.patrycja':true},away_delay_minutes:5,prewarm_ready:false});
     function homeProfile(profile){
       replace(homeEntities.mode,profile,{home_profile:profile,prewarm_ends_at:profile==='prewarming'?Date.now()/1000+14400:null});
       for(const room of Object.values(states).filter(e=>e.attributes.room_comfort)){const mode=profile==='prewarming'&&room.attributes.control_devices?room.attributes.coming_home_mode:room.state;const targets=mode==='cool'?room.attributes.cooling_profile_temperatures:room.attributes.heating_profile_temperatures;replace(room.entity_id,mode,{home_profile:profile,temperature:targets[profile==='prewarming'?'home':profile]});recalc(states[room.entity_id]);}
@@ -112,7 +117,11 @@
     };
     const overview=document.getElementById('overview');
     overview.setConfig({title:'Room Comfort'});
-    function refresh(){overview.hass={...hass,states:{...states}};}
+    for(const [container,type,layout] of [['compact-widgets','room-comfort-mini-card','compact'],['status-widgets','room-comfort-status-card','tile']]){
+      for(const id of ['climate.salon','climate.sypialnia']){const card=document.createElement(type);card.className='demo-widget';card.setConfig({entity:id,layout});document.getElementById(container).append(card);}
+    }
+    function refresh(){const current={...hass,states:{...states}};overview.hass=current;document.querySelectorAll('.demo-widget').forEach(card=>card.hass=current);}
+
     refresh();
     let toastTimer;
     document.addEventListener('hass-more-info',e=>{const toast=document.getElementById('toast');toast.textContent=`Home Assistant opens details & history for ${e.detail.entityId}`;toast.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.hidden=true,4000);});

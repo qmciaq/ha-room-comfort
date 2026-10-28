@@ -4,13 +4,13 @@
     "step": {
       "user": {
         "title": "Termostat pokojowy",
-        "description": "Wybierz urządzenia jednego pokoju. Sterowanie urządzeniami jest początkowo wyłączone, aby umożliwić sprawdzenie decyzji regulatora.",
+        "description": "Wybierz urządzenia jednego pokoju. Sterowanie urządzeniami jest początkowo wyłączone, aby umożliwić sprawdzenie decyzji regulatora. Obecność: wszystkie czujniki muszą być off; nieznany stan zachowuje komfort. Powrót do domu pomija pauzę pustego pokoju, ale respektuje okna i limity zewnętrzne.",
         "data": {
           "name": "Nazwa pokoju",
           "temperature_sensor": "Czujnik temperatury w pokoju",
           "radiators": "Termostaty grzejników",
           "air_conditioner": "Klimatyzator (opcjonalnie)",
-          "windows": "Czujniki otwarcia okien (opcjonalnie)",
+          "windows": "Kontakty drzwi/okien (otwarte = on)",
           "tolerance": "Tolerancja temperatury (°C)",
           "boost_minutes": "Czas dogrzewania (minuty)",
           "ac_cooldown_seconds": "Minimalna przerwa klimatyzatora (sekundy)",
@@ -27,7 +27,19 @@
           "home_cool_temperature": "Dom — chłodzenie (°C)",
           "away_cool_temperature": "Poza domem — chłodzenie (°C)",
           "vacation_cool_temperature": "Wakacje — chłodzenie (°C)",
-          "coming_home_mode": "Przygotuj dom przed powrotem: grzanie lub chłodzenie"
+          "coming_home_mode": "Przygotuj dom przed powrotem: grzanie lub chłodzenie",
+          "outdoor_policy": "Limity zewnętrzne: inherit = globalne, custom = własne, disabled = wyłączone",
+          "outdoor_sensor": "Czujnik na zewnątrz (pokój: pusty = globalny)",
+          "outdoor_heat_below": "Zacznij grzać poniżej temperatury zewnętrznej (°C)",
+          "outdoor_cool_above": "Zacznij chłodzić powyżej temperatury zewnętrznej (°C)",
+          "outdoor_hysteresis": "Histereza limitów zewnętrznych (°C)",
+          "outdoor_timeout_minutes": "Ważność odczytu zewnętrznego (min)",
+          "window_open_seconds": "Opóźnienie otwarcia przed pauzą (sekundy)",
+          "presence_sensors": "Czujniki obecności/ruchu w pokoju (on = obecność)",
+          "pause_heat_when_empty": "Pauzuj grzanie w pustym pokoju",
+          "pause_cool_when_empty": "Pauzuj chłodzenie w pustym pokoju",
+          "heat_absence_minutes": "Brak obecności przed pauzą grzania (min)",
+          "cool_absence_minutes": "Brak obecności przed pauzą chłodzenia (min)"
         }
       }
     },
@@ -38,20 +50,22 @@
       "unsupported_device": "Grzejniki wymagają trybów grzania, wyłączenia i jednej temperatury docelowej. Klimatyzator wymaga też chłodzenia.",
       "already_assigned": "Wybrane urządzenie jest już sterowane przez inny pokój Room Comfort.",
       "invalid_sensor": "Wybierz czujnik temperatury podający stopnie Celsjusza lub Fahrenheita.",
-      "cooling_requires_ac": "Chłodzenie wymaga przypisanego klimatyzatora."
+      "cooling_requires_ac": "Chłodzenie wymaga przypisanego klimatyzatora.",
+      "outdoor_sensor_required": "Wybierz czujnik temperatury zewnętrznej (dla pokoju można ustawić globalny).",
+      "outdoor_limits_overlap": "Limity grzania i chłodzenia wraz z histerezą muszą być rozdzielone."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Termostat pokojowy",
-        "description": "Wybierz urządzenia jednego pokoju. Sterowanie urządzeniami jest początkowo wyłączone, aby umożliwić sprawdzenie decyzji regulatora.",
+        "description": "Wybierz urządzenia jednego pokoju. Sterowanie urządzeniami jest początkowo wyłączone, aby umożliwić sprawdzenie decyzji regulatora. Obecność: wszystkie czujniki muszą być off; nieznany stan zachowuje komfort. Powrót do domu pomija pauzę pustego pokoju, ale respektuje okna i limity zewnętrzne.",
         "data": {
           "name": "Nazwa pokoju",
           "temperature_sensor": "Czujnik temperatury w pokoju",
           "radiators": "Termostaty grzejników",
           "air_conditioner": "Klimatyzator (opcjonalnie)",
-          "windows": "Czujniki otwarcia okien (opcjonalnie)",
+          "windows": "Kontakty drzwi/okien (otwarte = on)",
           "tolerance": "Tolerancja temperatury (°C)",
           "boost_minutes": "Czas dogrzewania (minuty)",
           "ac_cooldown_seconds": "Minimalna przerwa klimatyzatora (sekundy)",
@@ -68,7 +82,19 @@
           "home_cool_temperature": "Dom — chłodzenie (°C)",
           "away_cool_temperature": "Poza domem — chłodzenie (°C)",
           "vacation_cool_temperature": "Wakacje — chłodzenie (°C)",
-          "coming_home_mode": "Przygotuj dom przed powrotem: grzanie lub chłodzenie"
+          "coming_home_mode": "Przygotuj dom przed powrotem: grzanie lub chłodzenie",
+          "outdoor_policy": "Limity zewnętrzne: inherit = globalne, custom = własne, disabled = wyłączone",
+          "outdoor_sensor": "Czujnik na zewnątrz (pokój: pusty = globalny)",
+          "outdoor_heat_below": "Zacznij grzać poniżej temperatury zewnętrznej (°C)",
+          "outdoor_cool_above": "Zacznij chłodzić powyżej temperatury zewnętrznej (°C)",
+          "outdoor_hysteresis": "Histereza limitów zewnętrznych (°C)",
+          "outdoor_timeout_minutes": "Ważność odczytu zewnętrznego (min)",
+          "window_open_seconds": "Opóźnienie otwarcia przed pauzą (sekundy)",
+          "presence_sensors": "Czujniki obecności/ruchu w pokoju (on = obecność)",
+          "pause_heat_when_empty": "Pauzuj grzanie w pustym pokoju",
+          "pause_cool_when_empty": "Pauzuj chłodzenie w pustym pokoju",
+          "heat_absence_minutes": "Brak obecności przed pauzą grzania (min)",
+          "cool_absence_minutes": "Brak obecności przed pauzą chłodzenia (min)"
         }
       },
       "household": {
@@ -78,7 +104,13 @@
           "presence_entities": "Osoby i urządzenia (wszystkie poza strefą)",
           "home_zone": "Strefa domu",
           "away_delay_minutes": "Opóźnienie nieobecności (minuty)",
-          "prewarm_hours": "Limit ogrzewania przed powrotem (godziny)"
+          "prewarm_hours": "Limit ogrzewania przed powrotem (godziny)",
+          "outdoor_enabled": "Ograniczaj według temperatury zewnętrznej",
+          "outdoor_sensor": "Czujnik na zewnątrz (pokój: pusty = globalny)",
+          "outdoor_heat_below": "Zacznij grzać poniżej temperatury zewnętrznej (°C)",
+          "outdoor_cool_above": "Zacznij chłodzić powyżej temperatury zewnętrznej (°C)",
+          "outdoor_hysteresis": "Histereza limitów zewnętrznych (°C)",
+          "outdoor_timeout_minutes": "Ważność odczytu zewnętrznego (min)"
         }
       }
     },
@@ -89,7 +121,9 @@
       "unsupported_device": "Grzejniki wymagają trybów grzania, wyłączenia i jednej temperatury docelowej. Klimatyzator wymaga też chłodzenia.",
       "already_assigned": "Wybrane urządzenie jest już sterowane przez inny pokój Room Comfort.",
       "invalid_sensor": "Wybierz czujnik temperatury podający stopnie Celsjusza lub Fahrenheita.",
-      "cooling_requires_ac": "Chłodzenie wymaga przypisanego klimatyzatora."
+      "cooling_requires_ac": "Chłodzenie wymaga przypisanego klimatyzatora.",
+      "outdoor_sensor_required": "Wybierz czujnik temperatury zewnętrznej (dla pokoju można ustawić globalny).",
+      "outdoor_limits_overlap": "Limity grzania i chłodzenia wraz z histerezą muszą być rozdzielone."
     }
   }
 }

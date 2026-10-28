@@ -1,7 +1,7 @@
-# Validation — 0.4.0
+# Validation — 0.5.0
 
-- 82 Python PID/presence/household/controller tests passed locally.
-- 25 Playwright tests passed in a real headless browser, using the production
+- 104 Python PID/presence/household/controller tests passed locally.
+- 29 Playwright tests passed in a real headless browser, using the production
   frontend and simulated HA state/service objects.
 - Desktop (1440px), mobile (390px), dark theme and Polish labels were rendered.
 - Browser checks cover room discovery, temperature adjustments, heat/cool/off,
@@ -35,3 +35,16 @@ still need verification. The salon AC was unavailable when inspected.
 Workflows being present does not mean GitHub Actions, Hassfest or HACS validation
 have already passed. Those results must be checked after publishing the source.
 
+
+- Outdoor checks cover threshold boundaries, latch hysteresis, disabled policies,
+  global inheritance, room overrides, °F conversion, stale data and PID suppression.
+- Window/room presence checks cover independent contact timers, brief openings,
+  unknown states, separate AC/heating absence timers, immediate presence resumption,
+  cooldown, and the explicit Coming home occupancy bypass.
+- The real-Core smoke test exercises global/room settings forms and a real scheduled
+  window deadline callback, plus presence pause/resume while observe-only remains intact.
+- Compact controls and status tiles are verified in two-column mobile grids, using
+  the same HA service targets as full cards.
+
+GitHub HACS publication checks also depend on repository metadata and licensing;
+see publishing.md. No passing HACS catalog validation is claimed here.
