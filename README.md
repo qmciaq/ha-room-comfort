@@ -55,11 +55,6 @@ separate card dependency, runtime cloud service, or extra account required.
 The repository is public and can be added as a **custom Integration repository**.
 It is not currently listed in HACS's default catalog.
 
-Repository publication is still being completed: the owner must add a GitHub
-About description/topics and choose a license before HACS validation can fully
-pass. See the [publication checklist](docs/publishing.md). Manual installation
-remains available below.
-
 [![Open Room Comfort in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=qmciaq&repository=ha-room-comfort&category=integration)
 
 1. Install [HACS](https://www.hacs.xyz/docs/use/) if needed.
@@ -245,6 +240,9 @@ for command ordering, safety checks and shutdown behaviour.
 ## Help and contributing
 
 [Report a bug](https://github.com/qmciaq/ha-room-comfort/issues/new?template=bug_report.yml) · [Request a feature](https://github.com/qmciaq/ha-room-comfort/issues/new?template=feature_request.yml) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+
+Coding agents: start with [AGENTS.md](AGENTS.md), which references the shared
+[contribution rules](agents/contributing.md).
 
 When reporting device behaviour, include HA/integration versions, entity capabilities
 and relevant logs; remove tokens, coordinates and personal tracker details.

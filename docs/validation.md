@@ -46,5 +46,5 @@ have already passed. Those results must be checked after publishing the source.
 - Compact controls and status tiles are verified in two-column mobile grids, using
   the same HA service targets as full cards.
 
-GitHub HACS publication checks also depend on repository metadata and licensing;
-see publishing.md. No passing HACS catalog validation is claimed here.
+GitHub HACS checks also depend on repository metadata and licensing. Inspect the
+latest workflow results before claiming full HACS validation success.
