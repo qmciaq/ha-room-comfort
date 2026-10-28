@@ -31,6 +31,8 @@ class RoomController:
         self.devices = [*self.radiators, *([self.ac] if self.ac else [])]
         self.mode = "off"
         self.targets = {key: self.config[f"{key}_temperature"] for key in ("home", "away", "vacation")}
+        self.cool_targets = {key: self.config[f"{key}_cool_temperature"] for key in ("home", "away", "vacation")}
+        self.coming_home_mode = self.config["coming_home_mode"] if self.ac else "heat"
         self.household = household
         self.pid = RoomPID(self.config["pid_kp"], self.config["pid_ki"], self.config["pid_kd"], self.config["pid_deadband"])
         self.heat_output = 0.0
@@ -70,11 +72,27 @@ class RoomController:
 
     @property
     def target(self):
-        return self.targets[self.target_profile]
+        return self.active_targets[self.target_profile]
 
     @target.setter
     def target(self, value):
-        self.targets[self.target_profile] = value
+        self.active_targets[self.target_profile] = value
+
+    @property
+    def active_targets(self):
+        return self.cool_targets if self.mode == "cool" else self.targets
+
+    @property
+    def coming_home_target(self):
+        targets = self.cool_targets if self.coming_home_mode == "cool" else self.targets
+        return targets["home"]
+
+    @property
+    def coming_home_ready(self):
+        if self.temperature is None:
+            return False
+        return (self.temperature <= self.coming_home_target + .2 if self.coming_home_mode == "cool"
+                else self.temperature >= self.coming_home_target - .2)
 
     async def async_load(self):
         if saved := await self._store.async_load():
@@ -91,6 +109,12 @@ class RoomController:
                 if profile in self.targets and isinstance(value, (int, float)) and isfinite(value) and 5 <= value <= 30:
                     self.targets[profile] = float(value)
             self.enabled = bool(saved.get("enabled", False))
+            for profile, value in saved.get("cool_targets", {}).items():
+                if profile in self.cool_targets and isinstance(value, (int, float)) and isfinite(value) and 5 <= value <= 30:
+                    self.cool_targets[profile] = float(value)
+            saved_mode = saved.get("coming_home_mode", self.coming_home_mode)
+            if saved_mode in ("heat", "cool"):
+                self.coming_home_mode = saved_mode if self.ac else "heat"
             self._shutdown_pending = bool(saved.get("shutdown_pending", False))
         # A boost is deliberately never resumed after a restart.
         if self.ac:
@@ -99,7 +123,8 @@ class RoomController:
 
     def _stored_settings(self):
         return {"mode": self.mode, "target": self.targets["home"], "targets": dict(self.targets), "enabled": self.enabled,
-                "shutdown_pending": self._shutdown_pending}
+                "shutdown_pending": self._shutdown_pending, "cool_targets": dict(self.cool_targets),
+                "coming_home_mode": self.coming_home_mode}
 
     def _save(self):
         self._store.async_delay_save(self._stored_settings, 1)
@@ -180,13 +205,23 @@ class RoomController:
         if self.household:
             self.household.rooms.discard(self)
 
-    async def async_set_profile_temperature(self, profile, value):
+    async def async_set_profile_temperature(self, profile, value, mode="heat"):
         async with self._lock:
             value = float(value)
             if profile not in self.targets or not isfinite(value) or not 5 <= value <= 30:
                 raise HomeAssistantError("Profile target must be between 5 and 30 degrees Celsius")
-            self.targets[profile] = value
+            if mode not in ("heat", "cool") or (mode == "cool" and not self.ac):
+                raise HomeAssistantError("Cooling requires an assigned air conditioner")
+            (self.cool_targets if mode == "cool" else self.targets)[profile] = value
             self.pid.reset()
+            self._save()
+            await self._evaluate_locked()
+
+    async def async_set_coming_home_mode(self, mode):
+        async with self._lock:
+            if mode not in ("heat", "cool") or (mode == "cool" and not self.ac):
+                raise HomeAssistantError("Unsupported coming-home mode")
+            self.coming_home_mode = mode
             self._save()
             await self._evaluate_locked()
 
@@ -200,13 +235,14 @@ class RoomController:
                 value = float(target)
                 if not isfinite(value) or not 5 <= value <= 30:
                     raise HomeAssistantError("Room target must be between 5 and 30 degrees Celsius")
-                self.target = value
-                self.pid.reset()
             if mode is not None:
                 if self.mode != mode:
                     self.demand = Demand()
                     self.pid.reset()
                 self.mode = mode
+            if target is not None:
+                self.target = value
+                self.pid.reset()
             if cancel_boost:
                 self.boost_until = None
             was_enabled = self.enabled
@@ -241,8 +277,10 @@ class RoomController:
             self._profile = self.profile
             self.pid.reset()
             self.boost_until = None
-        if self.profile == "prewarming" and self.enabled and self.mode != "heat":
-            self.mode = "heat"
+        if self.profile == "prewarming" and self.enabled and self.mode != self.coming_home_mode:
+            self.mode = self.coming_home_mode
+            self.demand = Demand()
+            self.pid.reset()
             self._save()
         if self.ac and (state := self._state(self.ac)):
             if state.state == "off" and self._last_ac_mode != "off":
@@ -394,3 +432,4 @@ class RoomController:
                     self.status = "waiting_for_device"
         if self.errors:
             self.status = "device_error"
+

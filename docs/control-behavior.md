@@ -1,4 +1,4 @@
-# Room Comfort control behaviour — 0.3.0
+# Room Comfort control behaviour — 0.4.0
 
 ## Radiator PID
 
@@ -28,7 +28,7 @@ changes, new targets and sensor failures. Gain tuning still needs real equipment
 ## Household modes
 
 A single Home modes integration entry is created alongside the first room. It
-owns native switches for Vacation, Coming home prewarm and Automatic away, plus a
+owns native switches for Vacation, Coming home comfort and Automatic away, plus a
 Home mode sensor. Its options select person/device_tracker entities, a geographic
 HA home zone, an Away confirmation delay and a prewarm timeout.
 
@@ -41,19 +41,23 @@ for custom zones. One selected tracker inside prevents automatic Away.
 Vacation is explicitly manual. It survives presence changes and restart until
 disabled or until Coming home is started. Starting Vacation cancels prewarm.
 Starting prewarm clears Vacation, applies Home targets and switches enabled room
-controllers to Heat. Control-disabled rooms never begin operating hardware.
+controllers to their selected Heat or Cool return mode. Control-disabled rooms never begin operating hardware.
 
 Prewarm remains active after reaching target, displaying Ready and maintaining
 the Home targets. It ends on a new confirmed arrival, explicit cancellation or
 the configured timeout. Its absolute deadline survives restart. Defaults are
 five minutes of confirmed absence and a four-hour prewarm timeout.
 
-Per-room Home, Away and Vacation targets default to 21°C, 19°C and 17°C. They are
+Per-room Home, Away and Vacation heating targets default to 21°C, 19°C and 17°C;
+separate cooling targets default to 24°C, 27°C and 29°C. They are
 editable on cards, in room settings and through ordinary number entities. Moving
 the main thermostat target edits the currently active profile. Prewarm uses Home.
-Targets apply to the selected HVAC mode, including cooling; set seasonal targets
-accordingly. Off remains Off during ordinary presence/profile changes. Explicit
-prewarm may change an enabled room from Off/Cool to Heat and keeps Heat afterward.
+The selected HVAC mode chooses its matching target bank. Off remains Off during
+ordinary presence/profile changes. Explicit Coming home switches enabled rooms to
+their selected return mode and keeps that mode afterward. Ready means at least
+Home heat target minus 0.2°C in Heat, or at most Home cool target plus 0.2°C in Cool.
+Cooling uses hysteresis and the AC cooldown guard, while PID controls radiators.
+Changing the return mode during Coming home immediately applies it to enabled rooms.
 
 ## AC, faults and shutdown
 
@@ -82,3 +86,4 @@ Turning the room Off, confirming physical devices Off, disabling Control devices
 and removing its integration entry reverses ownership. Old device schedules or
 targets are not restored automatically. Shared multi-split restrictions and
 central-boiler operation are outside this integration.
+

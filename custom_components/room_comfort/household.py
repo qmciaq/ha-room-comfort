@@ -89,8 +89,7 @@ class Household:
     @property
     def prewarm_ready(self):
         controlled = [r for r in self.rooms if r.enabled]
-        return bool(controlled) and all(r.temperature is not None and
-            r.temperature >= r.targets["home"] - .2 and not getattr(r, "errors", {})
+        return bool(controlled) and all(r.coming_home_ready and not getattr(r, "errors", {})
             and getattr(getattr(r, "demand", None), "status", None) not in ("sensor_unavailable", "window_open")
             for r in controlled)
 
@@ -137,3 +136,4 @@ class Household:
             unsubscribe()
         self._unsubscribers.clear()
         await self._store.async_save(self._settings())
+

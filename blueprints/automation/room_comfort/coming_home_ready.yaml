@@ -1,0 +1,34 @@
+blueprint:
+  name: Room Comfort — notify when home is ready
+  description: >-
+    Run your selected actions when all enabled rooms reach their Home heating
+    or cooling targets during Coming home. Choose a phone notification in the
+    action editor. Disabled rooms do not count. This never starts Coming home
+    or Vacation. May run again if the home leaves and re-enters the ready state.
+  domain: automation
+  author: qmciaq
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    home_mode:
+      name: Room Comfort — Home mode sensor
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            integration: room_comfort
+    ready_actions:
+      name: Actions when ready
+      selector:
+        action: {}
+mode: single
+triggers:
+  - trigger: state
+    entity_id: !input home_mode
+    attribute: prewarm_ready
+    to: true
+conditions:
+  - condition: state
+    entity_id: !input home_mode
+    state: prewarming
+actions: !input ready_actions

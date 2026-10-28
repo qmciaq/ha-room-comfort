@@ -60,7 +60,7 @@ class HouseholdTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.home.profile, "prewarming")
 
     async def test_prewarm_remains_on_when_ready_until_arrival(self):
-        room = SimpleNamespace(enabled=True, temperature=21, targets={"home": 21})
+        room = SimpleNamespace(enabled=True, temperature=21, targets={"home": 21}, coming_home_ready=True)
         self.home.rooms = [room]
         await self.home.async_change("coming_home", True)
         self.assertTrue(self.home.prewarm_ready)
@@ -98,3 +98,4 @@ class HouseholdTests(unittest.IsolatedAsyncioTestCase):
         other._store.saved = saved
         await other.async_load()
         self.assertTrue(other.vacation)
+

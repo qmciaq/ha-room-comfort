@@ -98,9 +98,15 @@ class RoomThermostat(RoomEntity, ClimateEntity):
             "control_method": c.config["control_method"],
             "heat_demand_percent": round(c.heat_output * 100, 1),
             "home_profile": c.profile,
-            "profile_temperatures": dict(c.targets),
+            "profile_temperatures": dict(c.active_targets),
+            "heating_profile_temperatures": dict(c.targets),
+            "cooling_profile_temperatures": dict(c.cool_targets) if c.ac else {},
+            "coming_home_mode": c.coming_home_mode,
+            "coming_home_mode_entity": c.entity_ids.get("coming_home_mode"),
             "profile_temperature_unit": "°C",
-            "profile_temperature_entities": {key: c.entity_ids.get(f"{key}_temperature") for key in c.targets},
+            "profile_temperature_entities": {key: c.entity_ids.get(f"{key}_cool_temperature" if c.mode == "cool" else f"{key}_temperature") for key in c.targets},
+            "heating_profile_temperature_entities": {key: c.entity_ids.get(f"{key}_temperature") for key in c.targets},
+            "cooling_profile_temperature_entities": {key: c.entity_ids.get(f"{key}_cool_temperature") for key in c.targets} if c.ac else {},
             "household_entities": dict(c.household.entity_ids) if c.household else {},
         }
 
@@ -131,3 +137,4 @@ class RoomThermostat(RoomEntity, ClimateEntity):
 
     async def async_turn_off(self):
         await self.controller.async_change(mode="off", cancel_boost=True)
+

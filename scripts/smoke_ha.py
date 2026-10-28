@@ -78,7 +78,7 @@ async def main():
             assert hass.states.get("climate.test_radiator_1").state == "off"
             # The card's public JavaScript must actually be served, not just registered.
             async with ClientSession() as session:
-                async with session.get("http://127.0.0.1:8899/room_comfort_frontend/room-comfort.js?v=0.3.0") as response:
+                async with session.get("http://127.0.0.1:8899/room_comfort_frontend/room-comfort.js?v=0.4.0") as response:
                     assert response.status == 200, response.status
                     assert "room-comfort-card" in await response.text()
             # Exercise the real options form and room reload with settings intact.
@@ -124,6 +124,20 @@ async def main():
             assert home.vacation is False
             assert entry.runtime_data.target == 22
             assert entry.runtime_data.config["control_method"] == "pid"
+            await hass.services.async_call("select", "select_option", {
+                "entity_id": entry.runtime_data.entity_ids["coming_home_mode"], "option": "cool",
+            }, blocking=True)
+            assert entry.runtime_data.coming_home_mode == "cool"
+            cool_number = entry.runtime_data.entity_ids["home_cool_temperature"]
+            await hass.services.async_call("number", "set_value", {"entity_id": cool_number, "value": 25}, blocking=True)
+            assert entry.runtime_data.cool_targets["home"] == 25
+            assert entry.runtime_data.targets["home"] == 22
+            await hass.config_entries.async_reload(entry.entry_id)
+            await hass.async_block_till_done()
+            assert entry.runtime_data.coming_home_mode == "cool"
+            assert entry.runtime_data.cool_targets["home"] == 25
+            from smoke_blueprints import async_check_blueprints
+            await async_check_blueprints(hass, room.entity_id, home)
             print(f"HA {importlib.metadata.version('homeassistant')}: room and household flows, PID metadata, profile numbers, presence, vacation/prewarm switches, frontend and settings reload passed.")
         finally:
             await hass.async_stop(force=True)
@@ -135,3 +149,4 @@ if __name__ == "__main__":
     # inventory is the only environment fixture; HA and our code remain real.
     with patch("ifaddr.get_adapters", return_value=[]):
         asyncio.run(main())
+

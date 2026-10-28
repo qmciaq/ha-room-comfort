@@ -3,8 +3,8 @@
 from homeassistant.const import Platform
 
 DOMAIN = "room_comfort"
-VERSION = "0.3.0"
-PLATFORMS = [Platform.CLIMATE, Platform.BUTTON, Platform.SWITCH, Platform.NUMBER]
+VERSION = "0.4.0"
+PLATFORMS = [Platform.CLIMATE, Platform.BUTTON, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
 DEFAULTS = {
     "name": "Room",
     "radiators": [],
@@ -23,4 +23,9 @@ DEFAULTS = {
     "home_temperature": 21.0,
     "away_temperature": 19.0,
     "vacation_temperature": 17.0,
+    "home_cool_temperature": 24.0,
+    "away_cool_temperature": 27.0,
+    "vacation_cool_temperature": 29.0,
+    "coming_home_mode": "heat",
 }
+

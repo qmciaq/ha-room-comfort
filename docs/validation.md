@@ -1,13 +1,17 @@
-# Validation — 0.3.0
+# Validation — 0.4.0
 
-- 75 Python PID/presence/household/controller tests passed locally.
-- 21 Playwright tests passed in a real headless browser, using the production
+- 82 Python PID/presence/household/controller tests passed locally.
+- 25 Playwright tests passed in a real headless browser, using the production
   frontend and simulated HA state/service objects.
 - Desktop (1440px), mobile (390px), dark theme and Polish labels were rendered.
 - Browser checks cover room discovery, temperature adjustments, heat/cool/off,
   boost start/cancel/countdown, observe-only control, unavailable devices and
   sensor data, command errors, device more-info events, filters/search, HTML
   escaping, visual card editor events, and empty/missing-room states.
+- New cooling checks cover independent target banks, combined mode/target calls,
+  cooling return readiness, radiator interlocks, persistence and observe-only behaviour.
+- All four blueprints pass actual HA blueprint input/schema and automation validation,
+  plus triggered actions for schedule changes, manual return, mode selection and readiness.
 - Offline distribution checks cover manifest fields, a single integration,
   local brand icon, source/JSON syntax, and version consistency.
 - New checks cover partial PID output, deadband/noise behaviour, anti-windup,
@@ -30,3 +34,4 @@ still need verification. The salon AC was unavailable when inspected.
 
 Workflows being present does not mean GitHub Actions, Hassfest or HACS validation
 have already passed. Those results must be checked after publishing the source.
+

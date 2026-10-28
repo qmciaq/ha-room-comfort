@@ -1,0 +1,50 @@
+blueprint:
+  name: Room Comfort — choose room mode from a trigger
+  description: >-
+    Use a time, button, helper or other trigger to select Heat, Cool or Off for
+    a room. Uses that mode's current Home/Away/Vacation temperature; does not
+    overwrite any profile target or enable live control. Cooling requires AC.
+    Coming home uses its configured room mode while active.
+  domain: automation
+  author: qmciaq
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    room:
+      name: Room Comfort thermostat
+      selector:
+        entity:
+          filter:
+            domain: climate
+            integration: room_comfort
+    mode:
+      name: Room mode
+      default: heat
+      selector:
+        select:
+          options:
+            - heat
+            - cool
+            - "off"
+    start_triggers:
+      name: When to apply this mode
+      selector:
+        trigger: {}
+mode: restart
+triggers:
+  - triggers: !input start_triggers
+variables:
+  room: !input room
+  requested_mode: !input mode
+conditions:
+  - condition: template
+    value_template: >-
+      {{ state_attr(room, 'room_comfort') == true
+         and requested_mode in (state_attr(room, 'hvac_modes') or [])
+         and state_attr(room, 'home_profile') != 'prewarming' }}
+actions:
+  - action: climate.set_hvac_mode
+    target:
+      entity_id: !input room
+    data:
+      hvac_mode: !input mode

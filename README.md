@@ -1,6 +1,6 @@
 # Room Comfort
 
-**Smooth room heating, pet-friendly Away targets, and a warm home when you return.**
+**Room heating and cooling, pet-friendly Away targets, and comfort when you return.**
 
 A Home Assistant custom integration that coordinates radiator thermostats and an
 optional reversible air conditioner using an independent room temperature sensor.
@@ -14,7 +14,8 @@ Includes a responsive room card, an all-rooms overview, and a sidebar page.
 |---|---|
 | Target temperature | Adjust with buttons or the slider |
 | Heat → Radiators | PID makes bounded adjustments to native TRV targets using the room sensor |
-| Home / Away / Vacation targets | Editable per room, also exposed as HA number entities |
+| Home / Away / Vacation targets | Separate Heat and Cool temperatures per room, also exposed as HA number entities |
+| For my return | Choose Heat or Cool per room for Coming home |
 | Automatic away | Applies Away only after every selected tracker is confirmed outside the home zone |
 | Vacation switch | Manual override, retained until explicitly ended or Coming home is started |
 | Coming home switch | Uses Home targets, holds them ready until arrival, cancellation or timeout |
@@ -106,7 +107,7 @@ setups where automatic loading is disabled, register this URL as a **JavaScript
 module** under **Settings → Dashboards → Resources**:
 
 ```text
-/room_comfort_frontend/room-comfort.js?v=0.3.0
+/room_comfort_frontend/room-comfort.js?v=0.4.0
 ```
 
 The integration uses HA's supported static-path and custom-panel APIs. It does
@@ -124,15 +125,16 @@ HA zones, not room/device areas.
 
 Each room has editable **Home**, **Away**, and **Vacation** temperature fields on
 its card, with ordinary HA number entities for automations. Defaults are 21°C,
-19°C and 17°C. They are configurable comfort presets, not animal-care guidance.
+19°C and 17°C for heating, and 24°C, 27°C and 29°C for cooling. They are configurable comfort presets, not animal-care guidance.
 Keep Away warm enough for the dog instead of shutting every radiator down.
-Targets are room setpoints in both heating and cooling; choose seasonal values
-if you use the same profiles for cooling.
+Heating and cooling keep separate targets. Switching modes selects the matching
+profile target without overwriting the other mode. Cool stays visible but disabled
+with setup guidance if the room has no assigned AC. An unavailable AC also blocks cooling.
 
 - **Vacation** is a manual HA switch. It never activates merely because everyone
   left and does not auto-clear when a tracker returns.
 - **Coming home** is another HA switch. Starting it clears Vacation and applies
-  Home targets. Rooms with live control enabled switch to Heat; disabled rooms
+  Home targets. Rooms with live control enabled use their **For my return** Heat/Cool selection; disabled rooms
   remain in observe-only mode. AC heat boost is still a separate explicit action.
 - When temperatures are reached, Coming home says **Ready** and holds them. It
   ends on a confirmed arrival, cancellation, or the configurable timeout
@@ -142,6 +144,14 @@ if you use the same profiles for cooling.
 
 The overview includes the switches, individual tracker membership, and prewarm
 status/countdown. Mode priority is Coming home → Vacation → confirmed Away → Home.
+
+## Automation blueprints
+
+Four supplied blueprints cover scheduled Home temperatures, a manual return-home
+button, ready notifications, and room Heat/Cool/Off mode triggers. Each has a
+configuration form in HA. They use Room Comfort entities and preserve live-control
+opt-in. See [installation, examples and entity actions](docs/automations.md). The
+manual install ZIP includes the blueprint directory; HACS does not install it.
 
 ## Room settings
 
@@ -216,7 +226,7 @@ npm test
 python3 scripts/package.py
 ```
 
-**75 Python tests and 21 browser UI tests** passed locally. The browser tests
+**82 Python tests and 25 browser UI tests** passed locally. The browser tests
 exercise the bundled card code with simulated HA state/service objects; Python
 tests use a small fake HA API. Neither substitutes for a live installation test.
 An additional isolated **HA Core 2026.10.4** check passed setup/options flows,
@@ -228,3 +238,11 @@ GitHub Actions includes controller/browser tests, Hassfest and HACS validation
 (the latter is skipped while private). The package workflow produces install
 and source ZIP artifacts on version tags or manual dispatch. It does not publish
 a GitHub release or change repository visibility.
+
+
+### Upgrading from 0.3
+
+Existing heating targets and their entity IDs are retained. New cooling targets
+start at Home 24°C / Away 27°C / Vacation 29°C; review them before choosing Cool.
+Coming home defaults to Heat, with a per-room selector for Cool. Refresh the browser
+after updating the integration. The repository remains private.

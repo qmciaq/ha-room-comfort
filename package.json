@@ -1,6 +1,6 @@
 {
   "name": "ha-room-comfort",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Room thermostats, AC boost, and a bundled Home Assistant room UI",
   "scripts": {
@@ -11,3 +11,4 @@
     "playwright": "1.62.1"
   }
 }
+

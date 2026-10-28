@@ -1,0 +1,92 @@
+blueprint:
+  name: Room Comfort — scheduled Home temperature
+  description: >-
+    Use a Schedule helper to change one room's Home heating OR cooling target.
+    Away and Vacation targets are preserved. This does not enable live control
+    or change Heat/Cool/Off. Create a second automation for the other target mode.
+    Requires Room Comfort 0.4.0 or later. All temperatures are Celsius.
+  domain: automation
+  author: qmciaq
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    room:
+      name: Room Comfort thermostat
+      selector:
+        entity:
+          filter:
+            domain: climate
+            integration: room_comfort
+    schedule:
+      name: Schedule helper
+      selector:
+        entity:
+          filter:
+            domain: schedule
+    target_mode:
+      name: Target to schedule
+      default: heat
+      selector:
+        select:
+          options:
+            - label: Heating target
+              value: heat
+            - label: Cooling target (requires AC)
+              value: cool
+    active_temperature:
+      name: Home target while schedule is on (°C)
+      default: 21
+      selector:
+        number:
+          min: 5
+          max: 30
+          step: 0.5
+          unit_of_measurement: °C
+    inactive_temperature:
+      name: Home target while schedule is off (°C)
+      default: 19
+      selector:
+        number:
+          min: 5
+          max: 30
+          step: 0.5
+          unit_of_measurement: °C
+mode: restart
+triggers:
+  - trigger: state
+    entity_id: !input schedule
+    to: "on"
+  - trigger: state
+    entity_id: !input schedule
+    to: "off"
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id: !input room
+    from: "unavailable"
+  - trigger: state
+    entity_id: !input room
+    from: "unknown"
+variables:
+  room: !input room
+  schedule_entity: !input schedule
+  target_mode: !input target_mode
+  active_temperature: !input active_temperature
+  inactive_temperature: !input inactive_temperature
+  target_number: >-
+    {{ (state_attr(room, 'cooling_profile_temperature_entities' if target_mode == 'cool'
+         else 'heating_profile_temperature_entities') or {}).get('home', '') }}
+  desired_temperature: >-
+    {{ active_temperature if is_state(schedule_entity, 'on') else inactive_temperature }}
+conditions:
+  - condition: template
+    value_template: >-
+      {{ states(schedule_entity) in ['on', 'off'] and target_number != ''
+         and has_value(target_number)
+         and states(target_number) | float(-999) != desired_temperature | float }}
+actions:
+  - action: number.set_value
+    target:
+      entity_id: "{{ target_number }}"
+    data:
+      value: "{{ desired_temperature }}"

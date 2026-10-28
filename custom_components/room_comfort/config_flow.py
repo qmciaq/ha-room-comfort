@@ -36,6 +36,10 @@ def room_schema(values):
         vol.Required("pid_deadband", default=values["pid_deadband"]): vol.All(vol.Coerce(float), vol.Range(min=.05, max=.5)),
         vol.Required("pid_update_seconds", default=values["pid_update_seconds"]): vol.All(vol.Coerce(int), vol.Range(min=60, max=900)),
     }
+    for profile in ("home", "away", "vacation"):
+        key = f"{profile}_cool_temperature"
+        fields[vol.Required(key, default=values[key])] = vol.All(vol.Coerce(float), vol.Range(min=5, max=30))
+    fields[vol.Required("coming_home_mode", default=values["coming_home_mode"])] = selector.SelectSelector(selector.SelectSelectorConfig(options=["heat", "cool"]))
     return vol.Schema(fields)
 
 
@@ -48,6 +52,8 @@ def validate_room(hass, data, entry_id=None):
         devices.append(ac)
     if len(set(devices)) != len(devices):
         return "duplicate_device"
+    if data.get("coming_home_mode") == "cool" and not ac:
+        return "cooling_requires_ac"
     registry = er.async_get(hass)
     for entity_id in devices:
         registered = registry.async_get(entity_id)
@@ -107,11 +113,18 @@ class RoomComfortOptionsFlow(config_entries.OptionsFlowWithReload):
                 controller = self.config_entry.runtime_data
                 for profile in ("home", "away", "vacation"):
                     await controller.async_set_profile_temperature(profile, user_input[f"{profile}_temperature"])
+                    if user_input.get("air_conditioner") and controller.ac:
+                        await controller.async_set_profile_temperature(profile, user_input[f"{profile}_cool_temperature"], "cool")
+                # New AC assignments have no cooling entities until reload; save their defaults too.
+                controller.cool_targets.update({p: user_input[f"{p}_cool_temperature"] for p in controller.targets})
+                controller.coming_home_mode = user_input["coming_home_mode"]
                 self.hass.config_entries.async_update_entry(self.config_entry, title=user_input["name"])
                 return self.async_create_entry(title="", data=user_input)
         values = user_input if user_input is not None else {**self.config_entry.data, **self.config_entry.options}
         if user_input is None and self.config_entry.runtime_data:
             values.update({f"{profile}_temperature": value for profile, value in self.config_entry.runtime_data.targets.items()})
+            values.update({f"{profile}_cool_temperature": value for profile, value in self.config_entry.runtime_data.cool_targets.items()})
+            values["coming_home_mode"] = self.config_entry.runtime_data.coming_home_mode
         return self.async_show_form(step_id="init", data_schema=room_schema(values), errors=errors)
 
 
@@ -131,3 +144,4 @@ class HouseholdOptionsFlow(config_entries.OptionsFlowWithReload):
         })
         return self.async_show_form(step_id="household", data_schema=schema,
             description_placeholders={"purpose": "Home modes: all trackers must be outside the selected zone. Unknown states keep Home comfort. Vacation is manual; prewarm ends on arrival, cancellation or timeout."})
+

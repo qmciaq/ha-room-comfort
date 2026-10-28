@@ -33,7 +33,7 @@ class HouseholdSwitch(HouseholdEntity, SwitchEntity):
     def __init__(self, controller, key):
         super().__init__(controller, key)
         self.key = key
-        self._attr_name = {"vacation": "Vacation", "coming_home": "Coming home prewarm", "automatic_away": "Automatic away"}[key]
+        self._attr_name = {"vacation": "Vacation", "coming_home": "Coming home comfort", "automatic_away": "Automatic away"}[key]
         self._attr_icon = {"vacation": "mdi:bag-suitcase", "coming_home": "mdi:home-clock", "automatic_away": "mdi:map-marker-account"}[key]
 
     @property
@@ -45,3 +45,4 @@ class HouseholdSwitch(HouseholdEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs):
         await self.controller.async_change(self.key, False)
+

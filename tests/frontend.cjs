@@ -48,6 +48,38 @@ test('mode buttons call climate set_hvac_mode',async()=>{
   await salon().getByRole('button',{name:'Off',exact:true}).click();
   assert.equal(await page.evaluate(()=>demo.states['climate.salon'].state),'off');
 });
+test('Cool stays visible with setup guidance in a radiator-only room',async()=>{
+  const room=page.locator('room-comfort-card').filter({has:page.getByRole('heading',{name:'Biuro',exact:true})});
+  const cool=room.getByRole('button',{name:'Cool',exact:true});
+  assert.equal(await cool.isVisible(),true);
+  assert.equal(await cool.isDisabled(),true);
+  assert.match(await room.locator(".source-hint").first().textContent(),/Assign an air conditioner/);
+});
+test('cooling targets are separate and selected when switching to Cool',async()=>{
+  const input=salon().getByRole('spinbutton',{name:'home cooling temperature',exact:true});
+  await input.fill('25');await input.press('Tab');
+  await page.waitForFunction(()=>demo.calls.at(-1)?.domain==='number');
+  assert.equal(await salon().getByRole('slider').inputValue(),'21.5');
+  await salon().getByRole('button',{name:'Cool',exact:true}).click();
+  assert.equal(await salon().getByRole('slider').inputValue(),'25');
+  assert.equal(await salon().locator('.pid-demand').count(),0);
+  await salon().getByRole('button',{name:'Heat',exact:true}).click();
+  assert.equal(await salon().getByRole('slider').inputValue(),'21.5');
+});
+test('return mode selector uses the HA select service and cools on return',async()=>{
+  await salon().getByRole('combobox',{name:'Coming home mode',exact:true}).selectOption('cool');
+  const call=await page.evaluate(()=>demo.calls.at(-1));
+  assert.deepEqual(call,{domain:'select',service:'select_option',data:{option:'cool'},target:{entity_id:'select.salon_coming_home_mode'}});
+  await page.locator('room-comfort-home-controls').getByRole('switch',{name:'Prepare for my return',exact:true}).click();
+  assert.equal(await page.evaluate(()=>demo.states['climate.salon'].state),'cool');
+  assert.equal(await salon().getByRole('slider').inputValue(),'24');
+});
+test('automation help has blueprint and setup links',async()=>{
+  const help=page.locator('room-comfort-home-controls .automation-help');
+  await help.locator('summary').click();
+  assert.equal(await help.getByRole('link',{name:/Open HA blueprints/}).getAttribute('href'),'/config/blueprint/dashboard');
+  assert.match(await help.getByRole('link',{name:/Setup guide/}).getAttribute('href'),/docs\/automations.md$/);
+});
 test('observe mode shows planned outputs and live control can be enabled',async()=>{
   await page.locator('#observe').click();
   assert.match(await salon().locator('.observe').textContent(),/Controller demand/);
@@ -103,7 +135,7 @@ test('graphical card editor emits config-changed',async()=>{
 });
 test('Polish labels and dark theme render',async()=>{
   await page.locator('#language').selectOption('pl');
-  assert.equal(await page.getByRole('button',{name:'Dogrzewanie',exact:true}).count(),2);
+  assert.equal(await page.getByRole('button',{name:'Dogrzewanie',exact:true}).count(),1);
   await page.locator('#theme').click();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
 });
@@ -135,19 +167,19 @@ test('vacation is an explicit household switch and applies configured targets',a
 test('coming-home switch exits vacation, selects Home targets and shows timeout',async()=>{
   const home=page.locator('room-comfort-home-controls');
   await home.getByRole('switch',{name:'Vacation',exact:true}).click();
-  await home.getByRole('switch',{name:'Warm up for my return',exact:true}).click();
+  await home.getByRole('switch',{name:'Prepare for my return',exact:true}).click();
   assert.equal(await home.getByRole('switch',{name:'Vacation',exact:true}).getAttribute('aria-checked'),'false');
   assert.equal(await salon().getByRole('slider').inputValue(),'21.5');
   assert.equal(await home.locator('[data-prewarm-countdown]').count(),1);
-  assert.match(await home.locator('.prewarm-state').textContent(),/Warming to Home targets/);
+  assert.match(await home.locator('.prewarm-state').textContent(),/Heating or cooling to Home targets/);
 });
 
 test('prewarm-ready state remains an active switch',async()=>{
   const home=page.locator('room-comfort-home-controls');
-  await home.getByRole('switch',{name:'Warm up for my return',exact:true}).click();
+  await home.getByRole('switch',{name:'Prepare for my return',exact:true}).click();
   await page.evaluate(()=>{demo.replace('sensor.home_mode',null,{prewarm_ready:true});demo.refresh();});
   assert.match(await home.locator('.prewarm-state').textContent(),/Ready — holding/);
-  assert.equal(await home.getByRole('switch',{name:'Warm up for my return',exact:true}).getAttribute('aria-checked'),'true');
+  assert.equal(await home.getByRole('switch',{name:'Prepare for my return',exact:true}).getAttribute('aria-checked'),'true');
 });
 
 test('room profile temperatures are editable through HA number entities',async()=>{
@@ -172,3 +204,4 @@ test('presence chips show individual membership and explain the all-away rule',a
   assert.match(await home.locator('.trackers').textContent(),/Dominik · inside/);
   assert.match(await home.locator('.home-bottom').textContent(),/every tracker outside/);
 });
+

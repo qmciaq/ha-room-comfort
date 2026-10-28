@@ -16,14 +16,18 @@
           "ac_cooldown_seconds": "AC minimum off time (seconds)",
           "sensor_timeout_minutes": "Sensor freshness limit (minutes)",
           "control_method": "Radiator control method",
-          "home_temperature": "Home temperature (°C)",
-          "away_temperature": "Away temperature (°C)",
-          "vacation_temperature": "Vacation temperature (°C)",
+          "home_temperature": "Home — heating (°C)",
+          "away_temperature": "Away — heating (°C)",
+          "vacation_temperature": "Vacation — heating (°C)",
           "pid_kp": "PID proportional gain (per °C)",
           "pid_ki": "PID integral gain (per °C per minute)",
           "pid_kd": "PID derivative gain (minutes per °C)",
           "pid_deadband": "PID deadband (°C)",
-          "pid_update_seconds": "Minimum TRV target update interval (seconds)"
+          "pid_update_seconds": "Minimum TRV target update interval (seconds)",
+          "home_cool_temperature": "Home — cooling (°C)",
+          "away_cool_temperature": "Away — cooling (°C)",
+          "vacation_cool_temperature": "Vacation — cooling (°C)",
+          "coming_home_mode": "Coming home: heat or cool"
         }
       }
     },
@@ -33,7 +37,8 @@
       "nested_room": "Select physical device entities, not another Room Comfort thermostat.",
       "unsupported_device": "Radiators require Heat, Off and a single target temperature. The AC also requires Cool.",
       "already_assigned": "A selected device is already controlled by another Room Comfort room.",
-      "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units."
+      "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units.",
+      "cooling_requires_ac": "Assign an air conditioner to use cooling for Coming home."
     }
   },
   "options": {
@@ -52,14 +57,18 @@
           "ac_cooldown_seconds": "AC minimum off time (seconds)",
           "sensor_timeout_minutes": "Sensor freshness limit (minutes)",
           "control_method": "Radiator control method",
-          "home_temperature": "Home temperature (°C)",
-          "away_temperature": "Away temperature (°C)",
-          "vacation_temperature": "Vacation temperature (°C)",
+          "home_temperature": "Home — heating (°C)",
+          "away_temperature": "Away — heating (°C)",
+          "vacation_temperature": "Vacation — heating (°C)",
           "pid_kp": "PID proportional gain (per °C)",
           "pid_ki": "PID integral gain (per °C per minute)",
           "pid_kd": "PID derivative gain (minutes per °C)",
           "pid_deadband": "PID deadband (°C)",
-          "pid_update_seconds": "Minimum TRV target update interval (seconds)"
+          "pid_update_seconds": "Minimum TRV target update interval (seconds)",
+          "home_cool_temperature": "Home — cooling (°C)",
+          "away_cool_temperature": "Away — cooling (°C)",
+          "vacation_cool_temperature": "Vacation — cooling (°C)",
+          "coming_home_mode": "Coming home: heat or cool"
         }
       },
       "household": {
@@ -79,7 +88,8 @@
       "nested_room": "Select physical device entities, not another Room Comfort thermostat.",
       "unsupported_device": "Radiators require Heat, Off and a single target temperature. The AC also requires Cool.",
       "already_assigned": "A selected device is already controlled by another Room Comfort room.",
-      "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units."
+      "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units.",
+      "cooling_requires_ac": "Assign an air conditioner to use cooling for Coming home."
     }
   }
 }

@@ -31,7 +31,11 @@
       put(`switch.${slug}_control`,'on',{friendly_name:`${name} control devices`});
       put(`button.${slug}_cancel`,'unknown',{friendly_name:`${name} cancel boost`});
       const profileIds={}; for(const [profile,value] of Object.entries({home:target,away:19,vacation:17})){const id=`number.${slug}_${profile}_temperature`;profileIds[profile]=id;put(id,String(value),{friendly_name:`${name} ${profile} target`,unit_of_measurement:'°C'});}
-      put(base,mode,{control_method:'pid',heat_demand_percent:status==='heating'?42:status==='idle'?18:0,home_profile:'home',profile_temperatures:{home:target,away:19,vacation:17},profile_temperature_entities:profileIds,room_comfort:true,room_name:name,friendly_name:name,current_temperature:current,temperature:target,temperature_unit:'°C',target_temp_step:.5,min_temp:16,max_temp:28,hvac_modes:ac?['off','heat','cool']:['off','heat'],preset_modes:ac?['radiators','boost']:['radiators'],preset_mode:'radiators',controller_status:status,demand_status:status,control_devices:true,control_switch:`switch.${slug}_control`,room_sensor:`sensor.${slug}_temperature`,radiators:radiatorIds,air_conditioner:air,windows:[],boost_duration_minutes:20,boost_ends_at:null,boost_remaining_seconds:0,desired_radiator_heat:status==='heating',desired_ac_mode:mode==='cool'?'cool':'off',cancel_boost_button:`button.${slug}_cancel`,device_errors:{}});
+      const heatTargets={home:mode==='cool'?21:target,away:19,vacation:17};
+      const coolTargets=ac?{home:mode==='cool'?target:24,away:27,vacation:29}:{};
+      const coolIds={};for(const [profile,value] of Object.entries(coolTargets)){const id=`number.${slug}_${profile}_cool_temperature`;coolIds[profile]=id;put(id,String(value),{friendly_name:`${name} ${profile} cooling target`});}
+      const returnMode=`select.${slug}_coming_home_mode`;put(returnMode,mode==='cool'?'cool':'heat',{options:ac?['heat','cool']:['heat']});
+      put(base,mode,{heating_profile_temperatures:heatTargets,cooling_profile_temperatures:coolTargets,heating_profile_temperature_entities:profileIds,cooling_profile_temperature_entities:coolIds,coming_home_mode:mode==='cool'?'cool':'heat',coming_home_mode_entity:returnMode,control_method:'pid',heat_demand_percent:status==='heating'?42:status==='idle'?18:0,home_profile:'home',profile_temperatures:mode==='cool'?coolTargets:heatTargets,profile_temperature_entities:mode==='cool'?coolIds:profileIds,room_comfort:true,room_name:name,friendly_name:name,current_temperature:current,temperature:target,temperature_unit:'°C',target_temp_step:.5,min_temp:16,max_temp:28,hvac_modes:ac?['off','heat','cool']:['off','heat'],preset_modes:ac?['radiators','boost']:['radiators'],preset_mode:'radiators',controller_status:status,demand_status:status,control_devices:true,control_switch:`switch.${slug}_control`,room_sensor:`sensor.${slug}_temperature`,radiators:radiatorIds,air_conditioner:air,windows:[],boost_duration_minutes:20,boost_ends_at:null,boost_remaining_seconds:0,desired_radiator_heat:status==='heating',desired_ac_mode:mode==='cool'?'cool':'off',cancel_boost_button:`button.${slug}_cancel`,device_errors:{}});
     }
     addRoom('salon','Salon',19.8,21.5,'heat','heating',['Radiator · balcony','Radiator · sofa']);
     addRoom('biuro','Biuro',21.0,21.0,'heat','idle',['Radiator · desk'],false);
@@ -42,11 +46,14 @@
     put(homeEntities.mode,'home',{room_comfort_household:true,home_profile:'home',household_entities:homeEntities,memberships:{'person.dominik':true,'person.patrycja':true},away_delay_minutes:5,prewarm_ready:false});
     function homeProfile(profile){
       replace(homeEntities.mode,profile,{home_profile:profile,prewarm_ends_at:profile==='prewarming'?Date.now()/1000+14400:null});
-      for(const room of Object.values(states).filter(e=>e.attributes.room_comfort)){const target=room.attributes.profile_temperatures[profile==='prewarming'?'home':profile];replace(room.entity_id,null,{home_profile:profile,temperature:target});recalc(states[room.entity_id]);}
+      for(const room of Object.values(states).filter(e=>e.attributes.room_comfort)){const mode=profile==='prewarming'&&room.attributes.control_devices?room.attributes.coming_home_mode:room.state;const targets=mode==='cool'?room.attributes.cooling_profile_temperatures:room.attributes.heating_profile_temperatures;replace(room.entity_id,mode,{home_profile:profile,temperature:targets[profile==='prewarming'?'home':profile]});recalc(states[room.entity_id]);}
     }
     function replace(id,value,attributes={}){const e=states[id];put(id,value??e.state,{...e.attributes,...attributes});}
     function recalc(e){
-      const a=e.attributes;
+      let a=e.attributes;
+      const targets=e.state==='cool'?a.cooling_profile_temperatures:a.heating_profile_temperatures;
+      const ids=e.state==='cool'?a.cooling_profile_temperature_entities:a.heating_profile_temperature_entities;
+      a={...a,profile_temperatures:targets,profile_temperature_entities:ids,temperature:targets[a.home_profile==='prewarming'?'home':a.home_profile]};
       const boosting=a.boost_ends_at>Date.now()/1000;
       const desired=e.state==='heat'&&a.current_temperature<a.temperature?'heating':e.state==='cool'&&a.current_temperature>a.temperature?'cooling':e.state==='off'?'off':'idle';
       const status=boosting&&desired==='heating'?'boosting':desired;
@@ -61,7 +68,7 @@
         const id=target.entity_id;
         let e=states[id];
         if(domain==='climate'){
-          if(service==='set_temperature')replace(id,null,{temperature:data.temperature});
+          if(service==='set_temperature'){const field=e.state==='cool'?'cooling_profile_temperatures':'heating_profile_temperatures';const profile=e.attributes.home_profile==='prewarming'?'home':e.attributes.home_profile;replace(id,null,{temperature:data.temperature,[field]:{...e.attributes[field],[profile]:data.temperature}});}
           if(service==='set_hvac_mode')replace(id,data.hvac_mode,{boost_ends_at:null,preset_mode:'radiators'});
           if(service==='set_preset_mode'){
             if(data.preset_mode==='boost'&&states[e.attributes.air_conditioner]?.state==='unavailable')throw new Error('The room air conditioner is unavailable');
@@ -69,7 +76,20 @@
           }
           recalc(states[id]);
         }
-        if(domain==='number'){replace(id,String(data.value));const room=Object.values(states).find(e=>Object.values(e.attributes.profile_temperature_entities||{}).includes(id));const profile=Object.keys(room.attributes.profile_temperature_entities).find(k=>room.attributes.profile_temperature_entities[k]===id);const targets={...room.attributes.profile_temperatures,[profile]:data.value};replace(room.entity_id,null,{profile_temperatures:targets,temperature:(room.attributes.home_profile==='prewarming'?'home':room.attributes.home_profile)===profile?data.value:room.attributes.temperature});}
+        if(domain==='number'){
+          replace(id,String(data.value));
+          const room=Object.values(states).find(e=>[...Object.values(e.attributes.heating_profile_temperature_entities||{}),...Object.values(e.attributes.cooling_profile_temperature_entities||{})].includes(id));
+          const cooling=Object.values(room.attributes.cooling_profile_temperature_entities||{}).includes(id);
+          const ids=cooling?room.attributes.cooling_profile_temperature_entities:room.attributes.heating_profile_temperature_entities;
+          const field=cooling?'cooling_profile_temperatures':'heating_profile_temperatures';
+          const profile=Object.keys(ids).find(k=>ids[k]===id);
+          replace(room.entity_id,null,{[field]:{...room.attributes[field],[profile]:data.value}});recalc(states[room.entity_id]);
+        }
+        if(domain==='select'){
+          replace(id,data.option);const room=Object.values(states).find(e=>e.attributes.coming_home_mode_entity===id);
+          replace(room.entity_id,null,{coming_home_mode:data.option});
+          if(states[homeEntities.coming_home].state==='on')homeProfile('prewarming');
+        }
         if(domain==='switch'&&Object.values(homeEntities).includes(id)){
           replace(id,service==='turn_on'?'on':'off');
           if(id===homeEntities.vacation&&service==='turn_on')replace(homeEntities.coming_home,'off');
@@ -110,3 +130,4 @@
   </script>
 </body>
 </html>
+

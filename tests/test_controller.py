@@ -49,7 +49,7 @@ class TemperatureConverter:
 
 stub("homeassistant")
 stub("homeassistant.const", STATE_UNAVAILABLE="unavailable", STATE_UNKNOWN="unknown",
-     Platform=SimpleNamespace(CLIMATE="climate", BUTTON="button", SWITCH="switch", NUMBER="number"),
+     Platform=SimpleNamespace(CLIMATE="climate", BUTTON="button", SWITCH="switch", NUMBER="number", SELECT="select"),
      UnitOfTemperature=SimpleNamespace(CELSIUS="°C", FAHRENHEIT="°F"))
 stub("homeassistant.core", callback=lambda f: f)
 stub("homeassistant.exceptions", HomeAssistantError=HomeAssistantError)
@@ -339,6 +339,71 @@ class ControllerTests(unittest.IsolatedAsyncioTestCase):
         home.profile = "prewarming"
         self.assertEqual(self.room.target, 21)
 
+    async def test_heat_and_cool_keep_separate_profile_targets(self):
+        await self.room.async_change(mode="cool")
+        self.assertEqual(self.room.target, 24)
+        await self.room.async_change(target=23.5)
+        await self.room.async_change(mode="heat")
+        self.assertEqual(self.room.target, 21)
+        self.assertEqual(self.room.cool_targets["home"], 23.5)
+
+    async def test_combined_mode_and_target_updates_requested_mode_only(self):
+        await self.room.async_change(mode="cool", target=25)
+        self.assertEqual(self.room.target, 25)
+        self.assertEqual(self.room.targets["home"], 21)
+        await self.room.async_change(mode="heat", target=22)
+        self.assertEqual(self.room.cool_targets["home"], 25)
+        self.assertEqual(self.room.targets["home"], 22)
+
+    async def test_away_cooling_uses_warmer_limit(self):
+        self.room.household = SimpleNamespace(profile="away")
+        await self.room.async_change(mode="cool")
+        self.assertEqual(self.room.target, 27)
+        self.assertEqual(self.room.demand.ac_mode, "off")
+        await self.room.async_set_profile_temperature("away", 26, "cool")
+        self.assertEqual(self.room.target, 26)
+        self.assertEqual(self.room.targets["away"], 19)
+
+    async def test_coming_home_can_cool_with_radiators_off(self):
+        await self.room.async_set_coming_home_mode("cool")
+        self.room.household = SimpleNamespace(profile="prewarming")
+        self.states["sensor.room"].state = "28"
+        self.clock += 200
+        await self.room.async_change(enabled=True)
+        self.assertEqual(self.room.mode, "cool")
+        self.assertEqual(self.room.target, 24)
+        self.assertFalse(self.room.coming_home_ready)
+        self.assertTrue(all(self.states[e].state == "off" for e in self.room.radiators))
+        self.assertEqual(self.states["climate.ac"].state, "cool")
+        self.states["sensor.room"].state = "24.1"
+        self.assertTrue(self.room.coming_home_ready)
+
+    async def test_coming_home_observe_only_never_changes_mode_or_devices(self):
+        await self.room.async_set_coming_home_mode("cool")
+        self.room.household = SimpleNamespace(profile="prewarming")
+        await self.room.async_evaluate()
+        self.assertEqual(self.room.mode, "off")
+        self.assertEqual(self.services.calls, [])
+
+    async def test_cooling_profile_and_return_mode_restore(self):
+        await self.room.async_set_profile_temperature("home", 25, "cool")
+        await self.room.async_set_coming_home_mode("cool")
+        saved = self.room._store.saved
+        restored = RoomController(self.hass, self.entry)
+        restored._store.saved = saved
+        await restored.async_load()
+        self.assertEqual(restored.cool_targets["home"], 25)
+        self.assertEqual(restored.coming_home_mode, "cool")
+
+    async def test_no_ac_rejects_cooling_return_and_profile(self):
+        self.entry.data["air_conditioner"] = ""
+        room = RoomController(self.hass, self.entry)
+        with self.assertRaises(HomeAssistantError):
+            await room.async_set_coming_home_mode("cool")
+        with self.assertRaises(HomeAssistantError):
+            await room.async_set_profile_temperature("home", 25, "cool")
+
 
 if __name__ == "__main__":
     unittest.main()
+
