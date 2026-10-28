@@ -15,6 +15,8 @@ assert manifest["domain"] == "room_comfort"
 assert manifest["config_flow"] is True
 assert "panel_custom" in manifest["dependencies"]
 assert hacs["name"] == manifest["name"]
+assert (ROOT / "LICENSE").read_bytes() == (INTEGRATION / "LICENSE").read_bytes()
+assert "MIT License" in (ROOT / "LICENSE").read_text()
 assert (INTEGRATION / "brand/icon.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 for file in (ROOT / "custom_components").rglob("*.py"):
     ast.parse(file.read_text(), filename=str(file))
@@ -28,3 +30,4 @@ for component in ("room-comfort-card", "room-comfort-overview", "room-comfort-pa
     assert component in frontend
 assert "ha-energy-meter" not in frontend
 print(f"Distribution checks passed for Room Comfort {manifest['version']}")
+

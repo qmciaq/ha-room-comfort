@@ -5,10 +5,11 @@
   "description": "Room thermostats, AC boost, and a bundled Home Assistant room UI",
   "scripts": {
     "test": "node --test tests/frontend.cjs",
-    "check": "node --check custom_components/room_comfort/frontend/room-comfort.js"
+    "check": "node --check custom_components/room_comfort/frontend/room-comfort.js",
+    "test:release": "node --test tests/release.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
-  }
+  },
+  "license": "MIT"
 }
-

@@ -3,7 +3,8 @@
 [![Validation](https://github.com/qmciaq/ha-room-comfort/actions/workflows/validate.yml/badge.svg)](https://github.com/qmciaq/ha-room-comfort/actions/workflows/validate.yml)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistant&logoColor=white)](https://my.home-assistant.io/redirect/hacs_repository/?owner=qmciaq&repository=ha-room-comfort&category=integration)
 ![Home Assistant 2026.10+](https://img.shields.io/badge/Home_Assistant-2026.10%2B-18BCF2?logo=homeassistant&logoColor=white)
-![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-blue)
+[![Release](https://img.shields.io/github/v/release/qmciaq/ha-room-comfort)](https://github.com/qmciaq/ha-room-comfort/releases/latest)
+[![MIT License](https://img.shields.io/github/license/qmciaq/ha-room-comfort)](LICENSE)
 
 **One temperature control for a whole room: radiators, reversible AC, and an independent room sensor.**
 
@@ -78,13 +79,15 @@ It is not currently listed in HACS's default catalog.
 4. Download **Room Comfort**, then restart Home Assistant.
 5. Open **Settings → Devices & services → Add integration → Room Comfort**.
 
-Until GitHub releases are published, HACS uses the default branch; the displayed
-remote version can be a commit hash. Integration code, sidebar and card updates
-are delivered together. Restart HA and refresh the browser after updating.
+Select the latest named release in HACS. Integration code, sidebar and card
+updates are delivered together. Restart HA and refresh the browser after updating.
+If you installed a default-branch/commit build before the first release and no
+update appears, use **HACS → Room Comfort → Redownload** once and select the
+latest release.
 
 ### Manual installation
 
-1. [Download the repository ZIP](https://github.com/qmciaq/ha-room-comfort/archive/refs/heads/main.zip) and extract it.
+1. Download the install ZIP from the [latest release](https://github.com/qmciaq/ha-room-comfort/releases/latest), or [download the repository ZIP](https://github.com/qmciaq/ha-room-comfort/archive/refs/heads/main.zip).
 2. Copy `custom_components/room_comfort/` into your HA configuration directory's `custom_components/` folder.
 3. Restart Home Assistant, then add **Room Comfort** through Devices & services.
 4. For automation templates, import the blueprints separately; see [the guide](docs/automations.md).
@@ -262,6 +265,12 @@ Coding agents: start with [AGENTS.md](AGENTS.md), which references the shared
 When reporting device behaviour, include HA/integration versions, entity capabilities
 and relevant logs; remove tokens, coordinates and personal tracker details.
 
+## License
+
+[MIT](LICENSE) — use, modify and redistribute the project, including commercially,
+while retaining the copyright and license notice. The installed integration also
+includes the license.
+
 ## Development and validation
 
 ```sh
@@ -290,3 +299,9 @@ Related projects: see
 [Better Thermostat](https://github.com/KartoffelToby/better_thermostat) and
 [Versatile Thermostat](https://github.com/jmcollin78/versatile_thermostat) for other
 approaches to dashboard cards and room control.
+
+Versioned releases are published automatically after Python/browser tests, isolated
+HA Core smoke tests, hassfest and HACS validation pass on `main`. Update the
+manifest/version metadata and add the matching changelog section for a new
+version. Already published versions are never replaced. To retry publishing, rerun
+**Validate Room Comfort** from Actions; no personal token is required.

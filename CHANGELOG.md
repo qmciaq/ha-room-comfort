@@ -2,6 +2,8 @@
 
 ## 0.5.0
 
+- First versioned GitHub release, with MIT licensing and install/source ZIP assets.
+
 - Public HACS custom-repository installation, badges, dashboard examples and support documentation.
 - Global outdoor sensor and heating/cooling thresholds, per-room overrides or opt-out, hysteresis and stale-reading handling.
 - Door/window opening debounce, with a default continuous-open delay of 10 seconds; unknown contacts still pause immediately.

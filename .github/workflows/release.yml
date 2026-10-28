@@ -1,16 +1,18 @@
-name: Build release assets
+name: Publish versioned release
 
+# Runs after every check in validate.yml passes. Rerun that workflow to retry.
 on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: room-comfort-release
+  cancel-in-progress: false
 
 jobs:
-  package:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +21,11 @@ jobs:
           python-version: '3.12'
       - run: python3 scripts/validate.py
       - run: python3 scripts/package.py
-      - uses: actions/upload-artifact@v4
+      - run: python3 scripts/release_notes.py > dist/release-notes.md
+      - name: Publish release and ZIP assets
+        uses: actions/github-script@v8
         with:
-          name: room-comfort-distribution
-          path: dist/*.zip
+          script: |
+            const publish = require('./scripts/publish_release.cjs');
+            await publish({github, context, core});
+

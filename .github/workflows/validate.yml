@@ -27,6 +27,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
       - run: npm run check
+      - run: npm run test:release
       - run: npm test
       - uses: actions/upload-artifact@v4
         if: always()
@@ -54,4 +55,10 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+  release:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [tests, hassfest, core-smoke, hacs]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
 
