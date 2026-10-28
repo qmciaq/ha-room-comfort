@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room Comfort · Interactive UI preview</title>
+  <style>
+    :root{--primary-background-color:#f5f6f2;--primary-text-color:#293229;--secondary-text-color:#7c837a;--divider-color:#e5e8df;--card-background-color:#fff;--primary-font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light}
+    *{box-sizing:border-box}body{margin:0;background:var(--primary-background-color);color:var(--primary-text-color);font-family:var(--primary-font-family)}.preview-bar{border-bottom:1px solid var(--divider-color);padding:12px 32px;display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:11px;line-height:1.5;background:var(--card-background-color)}.preview-bar strong{font-weight:550}.preview-bar span{color:var(--secondary-text-color);margin-left:7px}.preview-actions{display:flex;gap:8px;flex-wrap:wrap}.preview-actions button,.preview-actions select{font:inherit;border:1px solid var(--divider-color);color:inherit;background:transparent;border-radius:7px;padding:7px 10px;cursor:pointer;min-height:34px}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);max-width:90vw;border-radius:12px;padding:13px 18px;background:#26352c;color:#fff;box-shadow:0 5px 25px #0002;font-size:12px;z-index:10}.toast[hidden]{display:none}.demo-note{margin:0 32px 30px;color:var(--secondary-text-color);font-size:11px;text-align:center;line-height:1.6}@media(max-width:600px){.preview-bar{padding:10px 16px;align-items:flex-start;flex-direction:column;gap:9px}.preview-bar span{display:block;margin-left:0}.preview-actions{gap:5px}.preview-actions button,.preview-actions select{font-size:10px;padding:5px 8px}.demo-note{margin:0 20px 24px}}
+  </style>
+  <script src="/custom_components/room_comfort/frontend/room-comfort.js"></script>
+</head>
+<body>
+  <div class="preview-bar"><div><strong>Interactive UI preview</strong><span>Simulated devices · no connection to your home</span></div><div class="preview-actions"><button id="theme">Dark mode</button><button id="fault">Simulate AC offline</button><button id="observe">Salon: observe only</button><select id="language" aria-label="Preview language"><option value="en">English</option><option value="pl">Polski</option></select></div></div>
+  <room-comfort-overview id="overview"></room-comfort-overview>
+  <p class="demo-note">The same room card works in the Room Comfort sidebar and in any Home Assistant dashboard.<br>These sample temperatures and devices are for interaction testing only.</p>
+  <div class="toast" id="toast" hidden role="status"></div>
+  <script>
+    const states = {};
+    const calls = [];
+    let failNext = false;
+    const state = (id, value, attrs) => ({entity_id:id,state:value,attributes:attrs,last_changed:new Date().toISOString(),last_updated:new Date().toISOString()});
+    const put = (id,value,attrs) => states[id]=state(id,value,attrs);
+    function addRoom(slug,name,current,target,mode,status,rads,ac=true){
+      const base=`climate.${slug}`;
+      const radiatorIds=rads.map((label,i)=>`climate.${slug}_radiator_${i+1}`);
+      radiatorIds.forEach((id,i)=>put(id,mode==='heat'?'heat':'off',{friendly_name:rads[i],temperature:mode==='heat'?35:21,hvac_modes:['heat','off']}));
+      const air=ac?`climate.${slug}_ac`:null;
+      if(air)put(air,mode==='cool'?'cool':'off',{friendly_name:`${name} AC`,temperature:22,hvac_modes:['heat','cool','off']});
+      put(`sensor.${slug}_temperature`,String(current),{friendly_name:`${name} room sensor`,unit_of_measurement:'°C'});
+      put(`switch.${slug}_control`,'on',{friendly_name:`${name} control devices`});
+      put(`button.${slug}_cancel`,'unknown',{friendly_name:`${name} cancel boost`});
+      const profileIds={}; for(const [profile,value] of Object.entries({home:target,away:19,vacation:17})){const id=`number.${slug}_${profile}_temperature`;profileIds[profile]=id;put(id,String(value),{friendly_name:`${name} ${profile} target`,unit_of_measurement:'°C'});}
+      put(base,mode,{control_method:'pid',heat_demand_percent:status==='heating'?42:status==='idle'?18:0,home_profile:'home',profile_temperatures:{home:target,away:19,vacation:17},profile_temperature_entities:profileIds,room_comfort:true,room_name:name,friendly_name:name,current_temperature:current,temperature:target,temperature_unit:'°C',target_temp_step:.5,min_temp:16,max_temp:28,hvac_modes:ac?['off','heat','cool']:['off','heat'],preset_modes:ac?['radiators','boost']:['radiators'],preset_mode:'radiators',controller_status:status,demand_status:status,control_devices:true,control_switch:`switch.${slug}_control`,room_sensor:`sensor.${slug}_temperature`,radiators:radiatorIds,air_conditioner:air,windows:[],boost_duration_minutes:20,boost_ends_at:null,boost_remaining_seconds:0,desired_radiator_heat:status==='heating',desired_ac_mode:mode==='cool'?'cool':'off',cancel_boost_button:`button.${slug}_cancel`,device_errors:{}});
+    }
+    addRoom('salon','Salon',19.8,21.5,'heat','heating',['Radiator · balcony','Radiator · sofa']);
+    addRoom('biuro','Biuro',21.0,21.0,'heat','idle',['Radiator · desk'],false);
+    addRoom('sypialnia','Sypialnia',24.4,22.0,'cool','cooling',['Radiator · window']);
+    const homeEntities={vacation:'switch.home_vacation',coming_home:'switch.home_coming_home',automatic_away:'switch.home_automatic_away',mode:'sensor.home_mode'};
+    for(const key of ['vacation','coming_home','automatic_away'])put(homeEntities[key],key==='automatic_away'?'on':'off',{friendly_name:key});
+    put('person.dominik','home',{friendly_name:'Dominik'});put('person.patrycja','home',{friendly_name:'Patrycja'});
+    put(homeEntities.mode,'home',{room_comfort_household:true,home_profile:'home',household_entities:homeEntities,memberships:{'person.dominik':true,'person.patrycja':true},away_delay_minutes:5,prewarm_ready:false});
+    function homeProfile(profile){
+      replace(homeEntities.mode,profile,{home_profile:profile,prewarm_ends_at:profile==='prewarming'?Date.now()/1000+14400:null});
+      for(const room of Object.values(states).filter(e=>e.attributes.room_comfort)){const target=room.attributes.profile_temperatures[profile==='prewarming'?'home':profile];replace(room.entity_id,null,{home_profile:profile,temperature:target});recalc(states[room.entity_id]);}
+    }
+    function replace(id,value,attributes={}){const e=states[id];put(id,value??e.state,{...e.attributes,...attributes});}
+    function recalc(e){
+      const a=e.attributes;
+      const boosting=a.boost_ends_at>Date.now()/1000;
+      const desired=e.state==='heat'&&a.current_temperature<a.temperature?'heating':e.state==='cool'&&a.current_temperature>a.temperature?'cooling':e.state==='off'?'off':'idle';
+      const status=boosting&&desired==='heating'?'boosting':desired;
+      const attrs={...a,demand_status:status,controller_status:a.control_devices?status:'observe_only',desired_radiator_heat:['heating','boosting'].includes(status),desired_ac_mode:status==='boosting'?'heat':status==='cooling'?'cool':'off'};
+      put(e.entity_id,e.state,attrs);
+      if(a.control_devices){a.radiators.forEach(id=>replace(id,attrs.desired_radiator_heat?'heat':'off'));if(a.air_conditioner&&states[a.air_conditioner].state!=='unavailable')replace(a.air_conditioner,attrs.desired_ac_mode);}
+    }
+    const hass={states,language:'en',locale:{language:'en'},config:{unit_system:{temperature:'°C'}},
+      async callService(domain,service,data={},target={}){
+        calls.push({domain,service,data,target});
+        if(failNext){failNext=false;throw new Error('Device did not respond. Please try again.');}
+        const id=target.entity_id;
+        let e=states[id];
+        if(domain==='climate'){
+          if(service==='set_temperature')replace(id,null,{temperature:data.temperature});
+          if(service==='set_hvac_mode')replace(id,data.hvac_mode,{boost_ends_at:null,preset_mode:'radiators'});
+          if(service==='set_preset_mode'){
+            if(data.preset_mode==='boost'&&states[e.attributes.air_conditioner]?.state==='unavailable')throw new Error('The room air conditioner is unavailable');
+            replace(id,'heat',{preset_mode:data.preset_mode,boost_ends_at:data.preset_mode==='boost'?Date.now()/1000+1200:null});
+          }
+          recalc(states[id]);
+        }
+        if(domain==='number'){replace(id,String(data.value));const room=Object.values(states).find(e=>Object.values(e.attributes.profile_temperature_entities||{}).includes(id));const profile=Object.keys(room.attributes.profile_temperature_entities).find(k=>room.attributes.profile_temperature_entities[k]===id);const targets={...room.attributes.profile_temperatures,[profile]:data.value};replace(room.entity_id,null,{profile_temperatures:targets,temperature:(room.attributes.home_profile==='prewarming'?'home':room.attributes.home_profile)===profile?data.value:room.attributes.temperature});}
+        if(domain==='switch'&&Object.values(homeEntities).includes(id)){
+          replace(id,service==='turn_on'?'on':'off');
+          if(id===homeEntities.vacation&&service==='turn_on')replace(homeEntities.coming_home,'off');
+          if(id===homeEntities.coming_home&&service==='turn_on')replace(homeEntities.vacation,'off');
+          homeProfile(states[homeEntities.coming_home].state==='on'?'prewarming':states[homeEntities.vacation].state==='on'?'vacation':'home');refresh();return;
+        }
+        if(domain==='switch'){
+          replace(id,service==='turn_on'?'on':'off');
+          const room=Object.values(states).find(e=>e.attributes.control_switch===id);
+          replace(room.entity_id,null,{control_devices:service==='turn_on',boost_ends_at:null});
+          if(service==='turn_off'){room.attributes.radiators.forEach(id=>replace(id,'off'));if(room.attributes.air_conditioner)replace(room.attributes.air_conditioner,'off');}
+          recalc(states[room.entity_id]);
+        }
+        if(domain==='button'){
+          const room=Object.values(states).find(e=>e.attributes.cancel_boost_button===id);
+          replace(room.entity_id,null,{boost_ends_at:null,preset_mode:'radiators'});recalc(states[room.entity_id]);
+        }
+        refresh();
+      }
+    };
+    const overview=document.getElementById('overview');
+    overview.setConfig({title:'Room Comfort'});
+    function refresh(){overview.hass={...hass,states:{...states}};}
+    refresh();
+    let toastTimer;
+    document.addEventListener('hass-more-info',e=>{const toast=document.getElementById('toast');toast.textContent=`Home Assistant opens details & history for ${e.detail.entityId}`;toast.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.hidden=true,4000);});
+    document.getElementById('theme').addEventListener('click',()=>{
+      const dark=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dark?'dark':'light';
+      const vars=dark?{'--primary-background-color':'#171e1b','--primary-text-color':'#e2e9e2','--secondary-text-color':'#9da89c','--divider-color':'#364039','--card-background-color':'#222c25'}:{'--primary-background-color':'#f5f6f2','--primary-text-color':'#293229','--secondary-text-color':'#7c837a','--divider-color':'#e5e8df','--card-background-color':'#fff'};
+      for(const [key,value] of Object.entries(vars))document.documentElement.style.setProperty(key,value);
+      document.getElementById('theme').textContent=dark?'Light mode':'Dark mode';
+    });
+    document.getElementById('fault').addEventListener('click',()=>{const id='climate.salon_ac';const offline=states[id].state!=='unavailable';replace(id,offline?'unavailable':'off');refresh();document.getElementById('fault').textContent=offline?'Restore AC':'Simulate AC offline';});
+    document.getElementById('observe').addEventListener('click',()=>hass.callService('switch',states['climate.salon'].attributes.control_devices?'turn_off':'turn_on',{}, {entity_id:'switch.salon_control'}));
+    document.getElementById('language').addEventListener('change',e=>{hass.language=e.target.value;refresh();});
+    // Local test surface. It exists only in this demo, never in the HA frontend.
+    window.demo={states,calls,refresh,replace,hass,failNext:()=>{failNext=true;}};
+  </script>
+</body>
+</html>

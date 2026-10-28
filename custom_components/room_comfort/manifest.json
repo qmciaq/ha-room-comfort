@@ -1,0 +1,21 @@
+{
+  "domain": "room_comfort",
+  "name": "Room Comfort",
+  "codeowners": [
+    "@qmciaq"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "climate",
+    "frontend",
+    "http",
+    "panel_custom",
+    "sensor"
+  ],
+  "documentation": "https://github.com/qmciaq/ha-room-comfort",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/qmciaq/ha-room-comfort/issues",
+  "requirements": [],
+  "version": "0.3.0"
+}

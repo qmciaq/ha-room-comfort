@@ -1,0 +1,85 @@
+{
+  "title": "Room Comfort",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Termostat pokojowy",
+        "description": "Wybierz urządzenia jednego pokoju. Sterowanie urządzeniami jest początkowo wyłączone, aby umożliwić sprawdzenie decyzji regulatora.",
+        "data": {
+          "name": "Nazwa pokoju",
+          "temperature_sensor": "Czujnik temperatury w pokoju",
+          "radiators": "Termostaty grzejników",
+          "air_conditioner": "Klimatyzator (opcjonalnie)",
+          "windows": "Czujniki otwarcia okien (opcjonalnie)",
+          "tolerance": "Tolerancja temperatury (°C)",
+          "boost_minutes": "Czas dogrzewania (minuty)",
+          "ac_cooldown_seconds": "Minimalna przerwa klimatyzatora (sekundy)",
+          "sensor_timeout_minutes": "Limit świeżości pomiaru (minuty)",
+          "control_method": "Sterowanie grzejnikami",
+          "home_temperature": "Temperatura Dom (°C)",
+          "away_temperature": "Temperatura Poza domem (°C)",
+          "vacation_temperature": "Temperatura Wakacje (°C)",
+          "pid_kp": "PID: wzmocnienie proporcjonalne",
+          "pid_ki": "PID: wzmocnienie całkujące (minuty)",
+          "pid_kd": "PID: wzmocnienie różniczkujące (minuty)",
+          "pid_deadband": "PID: martwa strefa (°C)",
+          "pid_update_seconds": "Minimalna przerwa między zmianami grzejnika (sekundy)"
+        }
+      }
+    },
+    "error": {
+      "room_required": "Podaj nazwę pokoju i wybierz co najmniej jeden grzejnik.",
+      "duplicate_device": "Każde urządzenie wybierz tylko raz. Klimatyzator nie może być grzejnikiem.",
+      "nested_room": "Wybierz urządzenia fizyczne zamiast innego termostatu Room Comfort.",
+      "unsupported_device": "Grzejniki wymagają trybów grzania, wyłączenia i jednej temperatury docelowej. Klimatyzator wymaga też chłodzenia.",
+      "already_assigned": "Wybrane urządzenie jest już sterowane przez inny pokój Room Comfort.",
+      "invalid_sensor": "Wybierz czujnik temperatury podający stopnie Celsjusza lub Fahrenheita."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Termostat pokojowy",
+        "description": "Wybierz urządzenia jednego pokoju. Sterowanie urządzeniami jest początkowo wyłączone, aby umożliwić sprawdzenie decyzji regulatora.",
+        "data": {
+          "name": "Nazwa pokoju",
+          "temperature_sensor": "Czujnik temperatury w pokoju",
+          "radiators": "Termostaty grzejników",
+          "air_conditioner": "Klimatyzator (opcjonalnie)",
+          "windows": "Czujniki otwarcia okien (opcjonalnie)",
+          "tolerance": "Tolerancja temperatury (°C)",
+          "boost_minutes": "Czas dogrzewania (minuty)",
+          "ac_cooldown_seconds": "Minimalna przerwa klimatyzatora (sekundy)",
+          "sensor_timeout_minutes": "Limit świeżości pomiaru (minuty)",
+          "control_method": "Sterowanie grzejnikami",
+          "home_temperature": "Temperatura Dom (°C)",
+          "away_temperature": "Temperatura Poza domem (°C)",
+          "vacation_temperature": "Temperatura Wakacje (°C)",
+          "pid_kp": "PID: wzmocnienie proporcjonalne",
+          "pid_ki": "PID: wzmocnienie całkujące (minuty)",
+          "pid_kd": "PID: wzmocnienie różniczkujące (minuty)",
+          "pid_deadband": "PID: martwa strefa (°C)",
+          "pid_update_seconds": "Minimalna przerwa między zmianami grzejnika (sekundy)"
+        }
+      },
+      "household": {
+        "title": "Tryby domu",
+        "description": "{purpose}",
+        "data": {
+          "presence_entities": "Osoby i urządzenia (wszystkie poza strefą)",
+          "home_zone": "Strefa domu",
+          "away_delay_minutes": "Opóźnienie nieobecności (minuty)",
+          "prewarm_hours": "Limit ogrzewania przed powrotem (godziny)"
+        }
+      }
+    },
+    "error": {
+      "room_required": "Podaj nazwę pokoju i wybierz co najmniej jeden grzejnik.",
+      "duplicate_device": "Każde urządzenie wybierz tylko raz. Klimatyzator nie może być grzejnikiem.",
+      "nested_room": "Wybierz urządzenia fizyczne zamiast innego termostatu Room Comfort.",
+      "unsupported_device": "Grzejniki wymagają trybów grzania, wyłączenia i jednej temperatury docelowej. Klimatyzator wymaga też chłodzenia.",
+      "already_assigned": "Wybrane urządzenie jest już sterowane przez inny pokój Room Comfort.",
+      "invalid_sensor": "Wybierz czujnik temperatury podający stopnie Celsjusza lub Fahrenheita."
+    }
+  }
+}

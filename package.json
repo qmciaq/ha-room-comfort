@@ -1,0 +1,13 @@
+{
+  "name": "ha-room-comfort",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Room thermostats, AC boost, and a bundled Home Assistant room UI",
+  "scripts": {
+    "test": "node --test tests/frontend.cjs",
+    "check": "node --check custom_components/room_comfort/frontend/room-comfort.js"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

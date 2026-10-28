@@ -1,0 +1,85 @@
+{
+  "title": "Room Comfort",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Room thermostat",
+        "description": "Choose the devices for one room. Control devices starts off so you can review decisions before operating hardware. All selected actuators will be managed together.",
+        "data": {
+          "name": "Room name",
+          "temperature_sensor": "Room temperature sensor",
+          "radiators": "Radiator thermostats",
+          "air_conditioner": "Air conditioner (optional)",
+          "windows": "Window contacts (optional)",
+          "tolerance": "Temperature tolerance (°C)",
+          "boost_minutes": "Boost duration (minutes)",
+          "ac_cooldown_seconds": "AC minimum off time (seconds)",
+          "sensor_timeout_minutes": "Sensor freshness limit (minutes)",
+          "control_method": "Radiator control method",
+          "home_temperature": "Home temperature (°C)",
+          "away_temperature": "Away temperature (°C)",
+          "vacation_temperature": "Vacation temperature (°C)",
+          "pid_kp": "PID proportional gain (per °C)",
+          "pid_ki": "PID integral gain (per °C per minute)",
+          "pid_kd": "PID derivative gain (minutes per °C)",
+          "pid_deadband": "PID deadband (°C)",
+          "pid_update_seconds": "Minimum TRV target update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "room_required": "Enter a room name and select at least one radiator.",
+      "duplicate_device": "Select each device only once; the AC cannot also be a radiator.",
+      "nested_room": "Select physical device entities, not another Room Comfort thermostat.",
+      "unsupported_device": "Radiators require Heat, Off and a single target temperature. The AC also requires Cool.",
+      "already_assigned": "A selected device is already controlled by another Room Comfort room.",
+      "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Room thermostat",
+        "description": "Choose the devices for one room. Control devices starts off so you can review decisions before operating hardware. All selected actuators will be managed together.",
+        "data": {
+          "name": "Room name",
+          "temperature_sensor": "Room temperature sensor",
+          "radiators": "Radiator thermostats",
+          "air_conditioner": "Air conditioner (optional)",
+          "windows": "Window contacts (optional)",
+          "tolerance": "Temperature tolerance (°C)",
+          "boost_minutes": "Boost duration (minutes)",
+          "ac_cooldown_seconds": "AC minimum off time (seconds)",
+          "sensor_timeout_minutes": "Sensor freshness limit (minutes)",
+          "control_method": "Radiator control method",
+          "home_temperature": "Home temperature (°C)",
+          "away_temperature": "Away temperature (°C)",
+          "vacation_temperature": "Vacation temperature (°C)",
+          "pid_kp": "PID proportional gain (per °C)",
+          "pid_ki": "PID integral gain (per °C per minute)",
+          "pid_kd": "PID derivative gain (minutes per °C)",
+          "pid_deadband": "PID deadband (°C)",
+          "pid_update_seconds": "Minimum TRV target update interval (seconds)"
+        }
+      },
+      "household": {
+        "title": "Home modes",
+        "description": "{purpose}",
+        "data": {
+          "presence_entities": "People / trackers (all must be outside)",
+          "home_zone": "Home zone",
+          "away_delay_minutes": "Away confirmation delay (minutes)",
+          "prewarm_hours": "Coming home timeout (hours)"
+        }
+      }
+    },
+    "error": {
+      "room_required": "Enter a room name and select at least one radiator.",
+      "duplicate_device": "Select each device only once; the AC cannot also be a radiator.",
+      "nested_room": "Select physical device entities, not another Room Comfort thermostat.",
+      "unsupported_device": "Radiators require Heat, Off and a single target temperature. The AC also requires Cool.",
+      "already_assigned": "A selected device is already controlled by another Room Comfort room.",
+      "invalid_sensor": "Select a temperature sensor with Celsius or Fahrenheit units."
+    }
+  }
+}
