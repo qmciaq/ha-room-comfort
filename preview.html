@@ -3,9 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Room Comfort · Interactive UI preview</title>
+  <title>Room Comfort · Interactive demo</title>
+  <meta name="description" content="Try Room Comfort: radiator heating, AC cooling, room profiles, outdoor limits and compact Home Assistant dashboard cards using simulated devices.">
   <style>
     :root{--primary-background-color:#f5f6f2;--primary-text-color:#293229;--secondary-text-color:#7c837a;--divider-color:#e5e8df;--card-background-color:#fff;--primary-font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light}
+    .demo-scenarios{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 32px;border-bottom:1px solid var(--divider-color);font-size:11px}.demo-scenarios label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.demo-scenarios select,.demo-scenarios button{font:inherit;color:inherit;background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px;padding:8px 10px;min-height:40px}.demo-scenarios span{color:var(--secondary-text-color);font-size:10px;line-height:1.5;max-width:480px}@media(max-width:600px){.demo-scenarios{padding:12px 16px;gap:8px}.demo-scenarios span{width:100%}}
     *{box-sizing:border-box}body{margin:0;background:var(--primary-background-color);color:var(--primary-text-color);font-family:var(--primary-font-family)}.preview-bar{border-bottom:1px solid var(--divider-color);padding:12px 32px;display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:11px;line-height:1.5;background:var(--card-background-color)}.preview-bar strong{font-weight:550}.preview-bar span{color:var(--secondary-text-color);margin-left:7px}.preview-actions{display:flex;gap:8px;flex-wrap:wrap}.preview-actions button,.preview-actions select{font:inherit;border:1px solid var(--divider-color);color:inherit;background:transparent;border-radius:7px;padding:7px 10px;cursor:pointer;min-height:34px}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);max-width:90vw;border-radius:12px;padding:13px 18px;background:#26352c;color:#fff;box-shadow:0 5px 25px #0002;font-size:12px;z-index:10}.toast[hidden]{display:none}.demo-note{margin:0 32px 30px;color:var(--secondary-text-color);font-size:11px;text-align:center;line-height:1.6}@media(max-width:600px){.preview-bar{padding:10px 16px;align-items:flex-start;flex-direction:column;gap:9px}.preview-bar span{display:block;margin-left:0}.preview-actions{gap:5px}.preview-actions button,.preview-actions select{font-size:10px;padding:5px 8px}.demo-note{margin:0 20px 24px}}
   </style>
   <script>/* Room Comfort 0.5.0. Bundled, dependency-free Home Assistant web components. */
@@ -442,6 +444,7 @@
 </head>
 <body>
   <div class="preview-bar"><div><strong>Interactive UI preview</strong><span>Simulated devices · no connection to your home</span></div><div class="preview-actions"><button id="theme">Dark mode</button><button id="fault">Simulate AC offline</button><button id="observe">Salon: observe only</button><select id="language" aria-label="Preview language"><option value="en">English</option><option value="pl">Polski</option></select></div></div>
+  <section class="demo-scenarios" aria-label="Demo scenarios"><label>Try a Salon scenario <select id="scenario" aria-label="Demo scenario"><option value="normal">Normal heating</option><option value="outdoor">Warm outdoors · 18°C</option><option value="window">Window open · delay elapsed</option><option value="empty">Empty room · absence timer elapsed</option><option value="away">Everyone away · delay elapsed</option></select></label><button id="reset-demo">Reset demo</button><span>Scenarios jump to the resulting state. This is a UI simulation, not the HA controller or a thermal model.</span></section>
   <room-comfort-overview id="overview"></room-comfort-overview>
   <section id="widget-showcase" style="max-width:1216px;margin:0 auto 36px;padding:0 16px"><h2 style="font-size:20px;font-weight:500">Smaller dashboard widgets</h2><p style="font-size:12px;color:var(--secondary-text-color)">Compact controls and status tiles · arrange in a two-column grid</p><div id="compact-widgets" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:650px"></div><div id="status-widgets" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:650px;margin-top:14px"></div></section>
   <p class="demo-note">The same room card works in the Room Comfort sidebar and in any Home Assistant dashboard.<br>These sample temperatures and devices are for interaction testing only.</p>
@@ -450,6 +453,7 @@
     const states = {};
     const calls = [];
     let failNext = false;
+    let scenario = 'normal';
     const state = (id, value, attrs) => ({entity_id:id,state:value,attributes:attrs,last_changed:new Date().toISOString(),last_updated:new Date().toISOString()});
     const put = (id,value,attrs) => states[id]=state(id,value,attrs);
     function addRoom(slug,name,current,target,mode,status,rads,ac=true){
@@ -491,7 +495,16 @@
       a={...a,profile_temperatures:targets,profile_temperature_entities:ids,temperature:targets[a.home_profile==='prewarming'?'home':a.home_profile]};
       const boosting=a.boost_ends_at>Date.now()/1000;
       const desired=e.state==='heat'&&a.current_temperature<a.temperature?'heating':e.state==='cool'&&a.current_temperature>a.temperature?'cooling':e.state==='off'?'off':'idle';
-      const status=boosting&&desired==='heating'?'boosting':desired;
+      let status=boosting&&desired==='heating'?'boosting':desired;
+      if(e.entity_id==='climate.salon'&&e.state!=='off'){
+        if(scenario==='window')status='window_open';
+        else if(scenario==='empty'&&a.home_profile!=='prewarming')status='room_unoccupied';
+        else if(scenario==='outdoor'&&e.state==='heat')status='outdoor_heat_blocked';
+        // The enabled outdoor demo policy also restricts cooling at 12/18°C.
+        else if(e.state==='cool')status='outdoor_cool_blocked';
+      }
+      const blocked=['window_open','room_unoccupied','outdoor_heat_blocked','outdoor_cool_blocked'].includes(status);
+      a={...a,heat_demand_percent:['heating','boosting'].includes(status)?42:status==='idle'&&e.state==='heat'?18:0,condition_status:status==='window_open'||status==='room_unoccupied'?status:null,outdoor_status:status.startsWith('outdoor_')?status:null,...(blocked?{boost_ends_at:null,preset_mode:'radiators',heat_demand_percent:0}:{})};
       const attrs={...a,demand_status:status,controller_status:a.control_devices?status:'observe_only',desired_radiator_heat:['heating','boosting'].includes(status),desired_ac_mode:status==='boosting'?'heat':status==='cooling'?'cool':'off'};
       put(e.entity_id,e.state,attrs);
       if(a.control_devices){a.radiators.forEach(id=>replace(id,attrs.desired_radiator_heat?'heat':'off'));if(a.air_conditioner&&states[a.air_conditioner].state!=='unavailable')replace(a.air_conditioner,attrs.desired_ac_mode);}
@@ -529,7 +542,7 @@
           replace(id,service==='turn_on'?'on':'off');
           if(id===homeEntities.vacation&&service==='turn_on')replace(homeEntities.coming_home,'off');
           if(id===homeEntities.coming_home&&service==='turn_on')replace(homeEntities.vacation,'off');
-          homeProfile(states[homeEntities.coming_home].state==='on'?'prewarming':states[homeEntities.vacation].state==='on'?'vacation':'home');refresh();return;
+          homeProfile(states[homeEntities.coming_home].state==='on'?'prewarming':states[homeEntities.vacation].state==='on'?'vacation':scenario==='away'&&states[homeEntities.automatic_away].state==='on'?'away':'home');refresh();return;
         }
         if(domain==='switch'){
           replace(id,service==='turn_on'?'on':'off');
@@ -552,8 +565,32 @@
     }
     function refresh(){const current={...hass,states:{...states}};overview.hass=current;document.querySelectorAll('.demo-widget').forEach(card=>card.hass=current);}
 
+    const initialStates=JSON.parse(JSON.stringify(states));
+    function applyScenario(next){
+      scenario=next;
+      replace('sensor.outdoor',next==='outdoor'?'18':'12');
+      replace('binary_sensor.salon_window',next==='window'?'on':'off');
+      replace('binary_sensor.salon_presence',next==='empty'?'off':'on');
+      replace('climate.salon',null,{outdoor_temperature:next==='outdoor'?18:12,room_occupied:next!=='empty',window_pending:false,room_absent_since:next==='empty'?Date.now()/1000-1900:null});
+      for(const id of ['person.dominik','person.patrycja'])replace(id,next==='away'?'not_home':'home');
+      replace(homeEntities.mode,null,{memberships:{'person.dominik':next!=='away','person.patrycja':next!=='away'}});
+      homeProfile(states[homeEntities.coming_home].state==='on'?'prewarming':states[homeEntities.vacation].state==='on'?'vacation':next==='away'&&states[homeEntities.automatic_away].state==='on'?'away':'home');
+      refresh();
+    }
+    document.getElementById('scenario').addEventListener('change',e=>applyScenario(e.target.value));
+    document.getElementById('reset-demo').addEventListener('click',()=>{
+      for(const id of Object.keys(states))delete states[id];Object.assign(states,JSON.parse(JSON.stringify(initialStates)));
+      calls.length=0;failNext=false;scenario='normal';document.getElementById('scenario').value='normal';
+      document.getElementById('fault').textContent='Simulate AC offline';refresh();
+    });
     refresh();
     let toastTimer;
+    document.addEventListener('click',event=>{
+      const link=event.composedPath().find(node=>node.tagName==='A');
+      if(!link?.getAttribute('href')?.startsWith('/config/'))return;
+      event.preventDefault();
+      const toast=document.getElementById('toast');toast.textContent='This opens configuration in your installed Home Assistant. The public demo uses simulated entities.';toast.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.hidden=true,6000);
+    },true);
     document.addEventListener('hass-more-info',e=>{const toast=document.getElementById('toast');toast.textContent=`Home Assistant opens details & history for ${e.detail.entityId}`;toast.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.hidden=true,4000);});
     document.getElementById('theme').addEventListener('click',()=>{
       const dark=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dark?'dark':'light';

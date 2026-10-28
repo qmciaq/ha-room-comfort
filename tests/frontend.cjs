@@ -8,13 +8,17 @@ let server,browser,page,url;
 const root=path.resolve(__dirname,'..');
 before(async()=>{
   server=http.createServer(async(req,res)=>{
-    const relative=req.url==='/'?'dev/index.html':decodeURIComponent(req.url.split('?')[0]).slice(1);
+    const pathname=decodeURIComponent(req.url.split('?')[0]);
+    const prefix=process.env.DEMO_TEST_PATH;
+    if(prefix&&!pathname.startsWith(prefix)){res.writeHead(404);return res.end();}
+    const local=prefix?pathname.slice(prefix.length):pathname.slice(1);
+    const relative=prefix?path.join('dist/demo',local||'index.html'):pathname==='/'?'dev/index.html':local;
     const file=path.resolve(root,relative);
     if(!file.startsWith(root+path.sep)){res.writeHead(403);return res.end();}
     try{const data=await fs.readFile(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.html')?'text/html':'application/octet-stream');res.end(data);}catch{res.writeHead(404);res.end();}
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  url=`http://127.0.0.1:${server.address().port}`;
+  url=`http://127.0.0.1:${server.address().port}${process.env.DEMO_TEST_PATH||'/'}`;
   browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})});
 });
 after(async()=>{await browser?.close();await new Promise(resolve=>server?.close(resolve));});
@@ -233,5 +237,33 @@ test('compact and tile cards fit two dashboard columns on mobile',async()=>{
   const widths=await page.locator('.demo-widget').evaluateAll(nodes=>nodes.map(n=>({client:n.clientWidth,scroll:n.shadowRoot.querySelector('.compact').scrollWidth})));
   assert.ok(widths.every(x=>x.scroll<=x.client),JSON.stringify(widths));
   await page.locator('#widget-showcase').screenshot({path:path.join(root,'docs/images/widgets.png')});
+});
+
+test('demo scenarios pause Salon for weather, windows and elapsed absence',async()=>{
+  await page.getByRole('combobox',{name:'Demo scenario',exact:true}).selectOption('outdoor');
+  assert.match(await salon().locator('.status').textContent(),/warm outdoors/);
+  assert.equal(await page.evaluate(()=>demo.states['climate.salon'].attributes.desired_radiator_heat),false);
+  await page.getByRole('combobox',{name:'Demo scenario',exact:true}).selectOption('window');
+  assert.match(await salon().locator('.status').textContent(),/Window open/);
+  await page.getByRole('combobox',{name:'Demo scenario',exact:true}).selectOption('empty');
+  assert.match(await salon().locator('.status').textContent(),/Room empty/);
+  await page.locator('room-comfort-home-controls').getByRole('switch',{name:'Prepare for my return',exact:true}).click();
+  assert.doesNotMatch(await salon().locator('.status').textContent(),/Room empty/);
+});
+
+test('everyone-away scenario uses Away targets and reset restores the demo',async()=>{
+  await page.getByRole('combobox',{name:'Demo scenario',exact:true}).selectOption('away');
+  assert.equal(await salon().getByRole('slider').inputValue(),'19');
+  assert.match(await page.locator('room-comfort-home-controls .profile').textContent(),/Away/);
+  await page.getByRole('button',{name:'Reset demo',exact:true}).click();
+  assert.equal(await salon().getByRole('slider').inputValue(),'21.5');
+  assert.equal(await page.getByRole('combobox',{name:'Demo scenario',exact:true}).inputValue(),'normal');
+});
+
+test('demo configuration links explain installed-HA actions without leaving the page',async()=>{
+  const before=page.url();
+  await page.getByRole('link',{name:'Add room',exact:true}).click();
+  assert.equal(page.url(),before);
+  assert.match(await page.locator('#toast').textContent(),/public demo uses simulated entities/);
 });
 

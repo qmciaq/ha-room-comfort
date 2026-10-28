@@ -14,6 +14,21 @@ room make it unnecessary.
 
 [Install](#installation) · [Quick start](#quick-start) · [Dashboard cards](#dashboard-cards) · [Outdoor limits](#outdoor-temperature-limits) · [Windows & presence](#doors-windows-and-room-presence) · [Blueprints](docs/automations.md) · [Troubleshooting](#troubleshooting)
 
+## Try the interactive demo
+
+[**Open the demo →**](https://qmciaq.github.io/ha-room-comfort/)
+
+Try Heat/Cool/Off, targets, AC boost, Vacation, Coming home, compact widgets,
+English/Polish and light/dark themes. Scenario presets demonstrate outdoor gates,
+an open window, elapsed room absence and everyone being away. **All devices and
+readings are simulated**; nothing connects to a Home Assistant installation.
+Scenarios jump to the resulting state rather than running the Python controller
+or modelling room physics. Reset restores the original sample rooms.
+
+The demo deploys through the [Deploy interactive demo workflow](https://github.com/qmciaq/ha-room-comfort/actions/workflows/demo.yml).
+For the first deployment, the owner must select **Settings → Pages → Source →
+GitHub Actions**, then rerun the workflow. No extra token or secret is needed.
+
 ![Room Comfort overview — simulated rooms](docs/images/desktop.png)
 
 ## What you get
@@ -264,6 +279,11 @@ interactive simulated-device UI. The optional real-Core smoke check uses an isol
 HA 2026.10.4 instance with simulated devices; install `homeassistant==2026.10.4` and
 `home-assistant-frontend==20260930.5` under Python 3.14, then run
 `python scripts/smoke_ha.py`. It never connects to your live HA.
+
+`python3 scripts/build_demo.py --standalone` builds the portable Pages site in
+`dist/demo/` and refreshes `preview.html`. The site uses relative asset paths and
+is tested under the `/ha-room-comfort/` project prefix before deployment. Only the
+demo HTML and the production card bundle are uploaded to Pages.
 
 Related projects: see
 [Mushroom](https://github.com/piitaya/lovelace-mushroom),
